@@ -28,83 +28,89 @@ if (Astro.request.method === 'POST') {
 ---
 
 <Layout title="振り返り | セルフプランニング支援アプリ">
-  <div class="max-w-3xl mx-auto space-y-8">
+  <div class="max-w-2xl mx-auto space-y-10">
     
-    <div class="bg-white p-6 md:p-8 rounded-2xl shadow-lg border-2 border-blue-100">
-      <h2 class="text-2xl font-extrabold text-blue-800 mb-6">📊 今月の活動データ（2026年4月）</h2>
-      
-      <div class="grid grid-cols-2 gap-6">
-        <div class="bg-blue-50 p-6 rounded-2xl text-center border-2 border-blue-100">
-          <div class="text-gray-600 font-bold mb-2">出勤日数</div>
-          <div class="text-5xl font-extrabold text-blue-700">18 <span class="text-2xl text-blue-500">日</span></div>
-        </div>
-        <div class="bg-green-50 p-6 rounded-2xl text-center border-2 border-green-100">
-          <div class="text-gray-600 font-bold mb-2">作業時間合計</div>
-          <div class="text-5xl font-extrabold text-green-700">45 <span class="text-2xl text-green-500">時間</span></div>
-        </div>
-      </div>
-      <p class="text-gray-500 text-sm mt-4 text-center">※モックのため固定データを表示しています。</p>
+    <div class="text-center mb-6">
+      <h2 class="text-3xl font-semibold text-apple-ink tracking-tight mb-2">今月の振り返り</h2>
+      <p class="text-apple-secondary text-lg">2026年4月の活動データ</p>
     </div>
 
-    <div class="bg-white p-6 md:p-8 rounded-2xl shadow-lg border-2 border-blue-100">
-      <h2 class="text-2xl font-extrabold text-blue-800 mb-6">🎯 今月の目標に対する振り返り</h2>
+    {/* 活動データパネル */}
+    <div class="grid grid-cols-2 gap-4">
+      <div class="bg-white p-8 rounded-[24px] shadow-[0_4px_24px_rgba(0,0,0,0.04)] border border-apple-border-soft text-center flex flex-col justify-center">
+        <div class="text-apple-secondary font-medium text-sm mb-2">出勤日数</div>
+        <div class="text-5xl font-semibold text-apple-ink tracking-tight">18<span class="text-xl text-apple-secondary ml-1">日</span></div>
+      </div>
+      <div class="bg-white p-8 rounded-[24px] shadow-[0_4px_24px_rgba(0,0,0,0.04)] border border-apple-border-soft text-center flex flex-col justify-center">
+        <div class="text-apple-secondary font-medium text-sm mb-2">作業時間合計</div>
+        <div class="text-5xl font-semibold text-apple-ink tracking-tight">45<span class="text-xl text-apple-secondary ml-1">h</span></div>
+      </div>
+    </div>
+    <p class="text-apple-secondary text-xs mt-2 text-center">※モックのため固定データを表示しています</p>
 
+    {/* 入力フォームパネル */}
+    <div class="bg-white p-8 md:p-12 rounded-[24px] shadow-[0_4px_24px_rgba(0,0,0,0.04)] border border-apple-border-soft">
       {message && (
-        <div class="mb-6 p-4 bg-green-100 text-green-800 text-xl font-bold rounded-xl text-center border-2 border-green-400">
+        <div class="mb-8 p-4 bg-gray-50 text-apple-ink font-medium rounded-xl border border-apple-border-soft text-center">
           {message}
         </div>
       )}
 
-      <form method="POST" class="space-y-8">
-        {/* 利用者ID（簡易的） */}
-        <div>
-          <label for="userId" class="block text-xl font-bold text-gray-800 mb-3">あなたのID</label>
-          <input 
-            type="text" 
-            id="userId" 
-            name="userId" 
-            required
-            placeholder="例: user001"
-            class="w-full text-xl p-4 border-4 border-gray-300 rounded-xl focus:border-blue-500 outline-none"
-          >
-        </div>
-
-        {/* 5段階評価 */}
-        <div>
-          <label class="block text-xl font-bold text-gray-800 mb-3">今月の目標はどれくらい達成できましたか？</label>
-          <div class="flex justify-between gap-2">
-            {[1, 2, 3, 4, 5].map((score) => (
-              <label class="flex-1 cursor-pointer">
-                <input type="radio" name="selfEvaluation" value={score} class="peer sr-only" required>
-                <div class="text-center py-4 bg-gray-100 rounded-xl border-4 border-gray-200 peer-checked:bg-blue-600 peer-checked:border-blue-800 peer-checked:text-white font-bold text-xl transition-all hover:bg-gray-200">
-                  {score}
-                </div>
-              </label>
-            ))}
+      {!message && (
+        <form method="POST" class="space-y-10">
+          <div>
+            <label for="userId" class="block text-sm font-semibold text-apple-secondary mb-2">あなたのID</label>
+            <input 
+              type="text" 
+              id="userId" 
+              name="userId" 
+              required
+              placeholder="user001"
+              class="w-full p-4 bg-apple-gray border border-apple-border-soft rounded-xl focus:border-apple-border-strong focus:bg-white focus:outline-none transition-colors text-apple-ink font-medium"
+            >
           </div>
-          <div class="flex justify-between text-sm text-gray-500 font-bold mt-2 px-2">
-            <span>まったく</span>
-            <span>とても</span>
+
+          <div>
+            <label class="block text-sm font-semibold text-apple-secondary mb-3">今月の目標はどれくらい達成できましたか？</label>
+            <div class="flex justify-between gap-2">
+              {[1, 2, 3, 4, 5].map((score) => (
+                <label class="flex-1 cursor-pointer">
+                  <input type="radio" name="selfEvaluation" value={score} class="peer sr-only" required>
+                  <div class="text-center py-4 bg-apple-gray text-apple-ink rounded-xl border border-transparent peer-checked:bg-apple-blue peer-checked:text-white font-semibold text-lg transition-all hover:bg-gray-200 peer-checked:hover:bg-apple-blue">
+                    {score}
+                  </div>
+                </label>
+              ))}
+            </div>
+            <div class="flex justify-between text-xs text-apple-secondary font-medium mt-3 px-2">
+              <span>まったく</span>
+              <span>とても</span>
+            </div>
           </div>
-        </div>
 
-        {/* 変更希望 */}
-        <div class="bg-yellow-50 p-6 rounded-xl border-4 border-yellow-200">
-          <label class="flex items-center gap-4 cursor-pointer">
-            <input type="checkbox" name="changeRequest" class="w-8 h-8 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
-            <span class="text-xl font-bold text-gray-800">来月から作業内容や時間を変更したいですか？</span>
-          </label>
-          <p class="text-gray-600 mt-2 ml-12">※チェックを入れると、職員から相談のお声がけをします。</p>
-        </div>
+          <div class="p-6 bg-apple-gray rounded-[20px] border border-apple-border-soft">
+            <label class="flex items-start gap-4 cursor-pointer group">
+              <div class="relative flex items-center justify-center mt-0.5">
+                <input type="checkbox" name="changeRequest" class="peer appearance-none w-6 h-6 border-2 border-apple-border-strong rounded-[6px] checked:bg-apple-blue checked:border-apple-blue transition-colors cursor-pointer">
+                <svg class="absolute w-4 h-4 text-white opacity-0 peer-checked:opacity-100 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              </div>
+              <div class="flex-1">
+                <span class="text-base font-semibold text-apple-ink block mb-1">来月から作業内容や時間を変更したいですか？</span>
+                <span class="text-sm text-apple-secondary">チェックを入れると、職員から相談のお声がけをします。</span>
+              </div>
+            </label>
+          </div>
 
-        {/* 送信ボタン */}
-        <button 
-          type="submit" 
-          class="w-full text-2xl font-extrabold text-white bg-blue-600 py-5 rounded-xl shadow-xl hover:bg-blue-700 active:scale-95 transition-transform Submit Button (送信)"
-        >
-          📤 振り返りを送信する
-        </button>
-      </form>
+          <div class="pt-4">
+            <button 
+              type="submit" 
+              class="w-full text-lg font-semibold text-white bg-apple-blue py-4 rounded-full shadow-[0_4px_14px_rgba(0,113,227,0.3)] hover:bg-apple-blue-hover active:scale-[0.98] transition-all Submit Button (送信)"
+            >
+              振り返りを送信する
+            </button>
+          </div>
+        </form>
+      )}
     </div>
   </div>
 </Layout>

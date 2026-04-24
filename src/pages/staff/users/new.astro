@@ -1,0 +1,120 @@
+---
+import Layout from '../../../layouts/Layout.astro';
+import { db, User } from 'astro:db';
+import QRCode from 'qrcode';
+
+let qrCodeDataUrl = "";
+let newUserId = "";
+let newUserName = "";
+let message = "";
+
+if (Astro.request.method === 'POST') {
+  try {
+    const data = await Astro.request.formData();
+    const id = data.get('userId');
+    const name = data.get('userName');
+
+    if (typeof id === 'string' && typeof name === 'string') {
+      // ユーザーの保存
+      await db.insert(User).values({ id, name });
+      
+      newUserId = id;
+      newUserName = name;
+      
+      // QRコードの生成
+      // モック用のため、現在のURLのホスト名などを想定して固定のパスを生成します。
+      // 実際には Astro.url.origin などを使用します。
+      const loginUrl = `${Astro.url.origin}/?userId=${id}`;
+      qrCodeDataUrl = await QRCode.toDataURL(loginUrl, {
+        width: 250,
+        margin: 2,
+        color: {
+          dark: '#1d1d1f', // Apple-like dark ink
+          light: '#ffffff'
+        }
+      });
+
+      message = `${name} さんの登録が完了しました。以下のQRコードを印刷して渡してください。`;
+    }
+  } catch (error) {
+    message = "エラーが発生しました。IDが重複している可能性があります。";
+    console.error(error);
+  }
+}
+---
+
+<Layout title="新規利用者登録 | セルフプランニング支援アプリ">
+  <div class="max-w-xl mx-auto space-y-8">
+    
+    <div class="flex justify-between items-center">
+      <h2 class="text-2xl font-semibold text-apple-ink tracking-tight">新規利用者登録</h2>
+      <a href="/staff" class="text-apple-blue hover:text-apple-blue-hover font-medium text-sm transition-colors">← 職員管理へ戻る</a>
+    </div>
+
+    <div class="bg-white p-8 rounded-2xl shadow-[0_2px_12px_rgba(0,0,0,0.06)] border border-apple-border-soft">
+      {message && (
+        <div class="mb-8 p-4 bg-gray-50 text-apple-ink font-medium rounded-xl border border-apple-border-soft text-center">
+          {message}
+        </div>
+      )}
+
+      {!qrCodeDataUrl ? (
+        <form method="POST" class="space-y-6">
+          <div>
+            <label for="userId" class="block text-sm font-semibold text-apple-secondary mb-2">利用者ID (半角英数字)</label>
+            <input 
+              type="text" 
+              id="userId" 
+              name="userId" 
+              required
+              placeholder="user003"
+              class="w-full p-3 bg-apple-gray border border-apple-border-soft rounded-lg focus:border-apple-border-strong focus:bg-white focus:outline-none transition-colors text-apple-ink font-medium"
+            >
+          </div>
+
+          <div>
+            <label for="userName" class="block text-sm font-semibold text-apple-secondary mb-2">氏名 (表示用)</label>
+            <input 
+              type="text" 
+              id="userName" 
+              name="userName" 
+              required
+              placeholder="田中 健太"
+              class="w-full p-3 bg-apple-gray border border-apple-border-soft rounded-lg focus:border-apple-border-strong focus:bg-white focus:outline-none transition-colors text-apple-ink font-medium"
+            >
+          </div>
+
+          <button 
+            type="submit" 
+            class="w-full mt-4 bg-apple-ink text-white font-semibold py-3.5 rounded-xl hover:bg-black transition-transform active:scale-[0.98] Register Button (登録)"
+          >
+            ユーザーを登録する
+          </button>
+        </form>
+      ) : (
+        <div class="flex flex-col items-center space-y-6 text-center">
+          <div class="text-apple-ink font-medium">
+            <span class="text-xl font-semibold block mb-1">{newUserName}</span>
+            <span class="text-apple-secondary text-sm">ID: {newUserId}</span>
+          </div>
+          
+          <div class="p-4 bg-white border border-apple-border-soft rounded-2xl shadow-sm">
+            <img src={qrCodeDataUrl} alt={`QR Code for ${newUserName}`} class="w-[200px] h-[200px]" />
+          </div>
+
+          <p class="text-sm text-apple-secondary leading-relaxed max-w-[280px]">
+            利用者はこのQRコードをスキャンするだけで、自分の入力画面に直接アクセスできます。
+          </p>
+
+          <a 
+            href="/staff/users/new" 
+            class="w-full mt-4 bg-apple-blue text-white font-semibold py-3.5 rounded-xl hover:bg-apple-blue-hover transition-transform active:scale-[0.98] Continue Button (続けて登録)"
+          >
+            続けて別の利用者を登録する
+          </a>
+        </div>
+      )}
+    </div>
+
+  </div>
+</Layout>

@@ -14,8 +14,13 @@
   "dependencies": {
     "@astrojs/db": "^0.20.1",
     "@astrojs/node": "^10.0.6",
+    "@fontsource/inter": "^5.2.8",
     "@tailwindcss/vite": "^4.2.4",
     "astro": "^6.1.9",
+    "qrcode": "^1.5.4",
     "tailwindcss": "^4.2.4"
+  },
+  "devDependencies": {
+    "@types/qrcode": "^1.5.6"
   }
 }

@@ -1,6 +1,11 @@
-import { db, DailyReport, Reflection } from 'astro:db';
+import { db, User, DailyReport, Reflection } from 'astro:db';
 
 export default async function seed() {
+  await db.insert(User).values([
+    { id: 'user001', name: '山田 太郎' },
+    { id: 'user002', name: '鈴木 花子' }
+  ]);
+
   await db.insert(DailyReport).values([
     {
       userId: 'user001',

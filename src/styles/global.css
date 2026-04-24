@@ -1,7 +1,19 @@
 @import "tailwindcss";
 
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --color-apple-gray: #f5f5f7;
+  --color-apple-ink: #1d1d1f;
+  --color-apple-blue: #0071e3;
+  --color-apple-blue-hover: #0066cc;
+  --color-apple-dark: #000000;
+  --color-apple-border-soft: #d2d2d7;
+  --color-apple-border-strong: #86868b;
+  --color-apple-secondary: #6e6e73;
+}
+
 @layer base {
   body {
-    @apply bg-slate-50 text-slate-900;
+    @apply bg-apple-gray text-apple-ink antialiased tracking-tight;
   }
 }

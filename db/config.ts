@@ -1,5 +1,13 @@
 import { defineDb, defineTable, column, NOW } from 'astro:db';
 
+const User = defineTable({
+  columns: {
+    id: column.text({ primaryKey: true }),
+    name: column.text(),
+    createdAt: column.date({ default: NOW }),
+  }
+});
+
 const DailyReport = defineTable({
   columns: {
     id: column.number({ primaryKey: true }),
@@ -25,5 +33,5 @@ const Reflection = defineTable({
 });
 
 export default defineDb({
-  tables: { DailyReport, Reflection }
+  tables: { User, DailyReport, Reflection }
 });

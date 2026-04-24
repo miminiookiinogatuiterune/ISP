@@ -1,11 +1,20 @@
 ---
 import Layout from '../../layouts/Layout.astro';
-import { db, DailyReport } from 'astro:db';
+import { db, DailyReport, User, eq } from 'astro:db';
 
-// データの取得
-const reports = await db.select().from(DailyReport);
+// データの取得 (UserテーブルをJoinして名前も取得できるようにする)
+const reportsRaw = await db.select().from(DailyReport);
+const users = await db.select().from(User);
 
-// POSTリクエスト時の処理（特記事項の更新）
+// 簡易的なJoin
+const reports = reportsRaw.map(report => {
+  const user = users.find(u => u.id === report.userId);
+  return {
+    ...report,
+    userName: user ? user.name : '不明なユーザー'
+  };
+}).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+
 if (Astro.request.method === 'POST') {
   try {
     const data = await Astro.request.formData();
@@ -13,11 +22,7 @@ if (Astro.request.method === 'POST') {
     const staffNote = data.get('staffNote');
 
     if (id && typeof staffNote === 'string') {
-      // 本来は update() で更新しますが、Astro DB の基本的な操作を想定しています
-      // （※Astro DBの最新のAPI仕様に合わせてupdateを使用）
-      // await db.update(DailyReport).set({ staffNote }).where(eq(DailyReport.id, id));
-      // ※注意: モック用のため、今回は動作確認用に簡易な記述にとどめています。
-      // 今回はモックのため、読み取りメインとします。（本格的な更新にはeqなどのインポートが必要）
+      // 本来は update()
     }
   } catch (error) {
     console.error(error);
@@ -26,71 +31,81 @@ if (Astro.request.method === 'POST') {
 ---
 
 <Layout title="職員管理画面 | セルフプランニング支援アプリ">
-  <div class="bg-white p-6 md:p-10 rounded-2xl shadow-lg border-2 border-blue-100">
-    <div class="flex justify-between items-center mb-8">
-      <h2 class="text-2xl font-extrabold text-blue-800">📋 利用者日報一覧（職員用）</h2>
-      <button class="bg-blue-100 text-blue-700 px-4 py-2 rounded-lg font-bold hover:bg-blue-200 transition-colors Filter Button (絞り込み)">
-        🔍 絞り込み
-      </button>
+  <div class="space-y-6">
+    <div class="flex justify-between items-end mb-2 px-2">
+      <div>
+        <h2 class="text-3xl font-semibold text-apple-ink tracking-tight mb-1">利用者日報一覧</h2>
+        <p class="text-sm text-apple-secondary">直近の入力データ</p>
+      </div>
+      <div class="flex gap-3">
+        <a href="/staff/users/new" class="bg-apple-ink text-white px-5 py-2.5 rounded-full text-sm font-semibold hover:bg-black transition-colors Add User Button (新規登録)">
+          ＋ 新規利用者登録
+        </a>
+      </div>
     </div>
 
-    <div class="overflow-x-auto">
-      <table class="w-full text-left border-collapse">
-        <thead>
-          <tr class="bg-blue-50 text-blue-900 border-b-2 border-blue-200">
-            <th class="p-4 font-bold">日付</th>
-            <th class="p-4 font-bold">利用者ID</th>
-            <th class="p-4 font-bold">作業内容</th>
-            <th class="p-4 font-bold">時間</th>
-            <th class="p-4 font-bold text-center">体調</th>
-            <th class="p-4 font-bold">コメント</th>
-            <th class="p-4 font-bold">特記事項（職員記入）</th>
-          </tr>
-        </thead>
-        <tbody>
-          {reports.map((report) => (
-            <tr class="border-b border-gray-100 hover:bg-gray-50 transition-colors">
-              <td class="p-4 text-gray-600">
-                {new Date(report.createdAt).toLocaleDateString('ja-JP')}
-              </td>
-              <td class="p-4 font-bold text-gray-800">{report.userId}</td>
-              <td class="p-4">
-                <span class="bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-sm font-bold">
-                  {report.taskType}
-                </span>
-              </td>
-              <td class="p-4 font-bold">{report.taskDuration}h</td>
-              <td class="p-4 text-center text-2xl">
-                {report.healthStatus === 3 ? '😄' : report.healthStatus === 2 ? '😐' : '😷'}
-              </td>
-              <td class="p-4 text-gray-700">{report.comment || '-'}</td>
-              <td class="p-4">
-                <form method="POST" class="flex gap-2">
-                  <input type="hidden" name="id" value={report.id} />
-                  <input 
-                    type="text" 
-                    name="staffNote" 
-                    value={report.staffNote || ''} 
-                    placeholder="特記事項を入力..." 
-                    class="border-2 border-gray-200 rounded-lg p-2 text-sm w-full focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all"
-                  />
-                  <button type="submit" class="bg-blue-600 text-white px-3 py-2 rounded-lg text-sm font-bold hover:bg-blue-700 Save Button (保存)">
-                    保存
-                  </button>
-                </form>
-              </td>
+    <div class="bg-white rounded-[24px] shadow-[0_4px_24px_rgba(0,0,0,0.04)] border border-apple-border-soft overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse text-sm">
+          <thead>
+            <tr class="border-b border-apple-border-soft bg-apple-gray/50 text-apple-secondary">
+              <th class="p-4 font-semibold whitespace-nowrap">日付</th>
+              <th class="p-4 font-semibold whitespace-nowrap">氏名 / ID</th>
+              <th class="p-4 font-semibold whitespace-nowrap">作業</th>
+              <th class="p-4 font-semibold whitespace-nowrap text-center">体調</th>
+              <th class="p-4 font-semibold w-1/4">コメント</th>
+              <th class="p-4 font-semibold w-1/4">特記事項</th>
             </tr>
-          ))}
+          </thead>
+          <tbody class="divide-y divide-apple-border-soft">
+            {reports.map((report) => (
+              <tr class="hover:bg-gray-50/50 transition-colors">
+                <td class="p-4 text-apple-secondary">
+                  {new Date(report.createdAt).toLocaleDateString('ja-JP')}
+                </td>
+                <td class="p-4">
+                  <div class="font-semibold text-apple-ink">{report.userName}</div>
+                  <div class="text-xs text-apple-secondary mt-0.5">{report.userId}</div>
+                </td>
+                <td class="p-4">
+                  <span class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-apple-gray text-apple-ink border border-apple-border-soft">
+                    {report.taskType} <span class="ml-1.5 text-apple-secondary">{report.taskDuration}h</span>
+                  </span>
+                </td>
+                <td class="p-4 text-center text-xl">
+                  {report.healthStatus === 3 ? '😄' : report.healthStatus === 2 ? '😐' : '😷'}
+                </td>
+                <td class="p-4 text-apple-ink break-words">
+                  {report.comment || <span class="text-apple-border-soft">-</span>}
+                </td>
+                <td class="p-4">
+                  <form method="POST" class="flex gap-2">
+                    <input type="hidden" name="id" value={report.id} />
+                    <input 
+                      type="text" 
+                      name="staffNote" 
+                      value={report.staffNote || ''} 
+                      placeholder="追記..." 
+                      class="flex-1 min-w-[120px] border border-apple-border-soft rounded-lg px-3 py-1.5 text-sm focus:border-apple-border-strong focus:outline-none transition-colors"
+                    />
+                    <button type="submit" class="bg-apple-gray text-apple-ink border border-apple-border-soft px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-gray-200 transition-colors Save Button (保存)">
+                      保存
+                    </button>
+                  </form>
+                </td>
+              </tr>
+            ))}
 
-          {reports.length === 0 && (
-            <tr>
-              <td colspan="7" class="p-8 text-center text-gray-500 font-bold">
-                日報データがありません。
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
+            {reports.length === 0 && (
+              <tr>
+                <td colspan="6" class="p-12 text-center text-apple-secondary">
+                  日報データがありません。
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   </div>
 </Layout>

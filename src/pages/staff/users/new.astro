@@ -3,118 +3,106 @@ import Layout from '../../../layouts/Layout.astro';
 import { db, User } from 'astro:db';
 import QRCode from 'qrcode';
 
-let qrCodeDataUrl = "";
-let newUserId = "";
-let newUserName = "";
-let message = "";
+let qrCodeUrl = "";
+let registeredUser = null;
+let error = "";
 
 if (Astro.request.method === 'POST') {
   try {
     const data = await Astro.request.formData();
-    const id = data.get('userId');
-    const name = data.get('userName');
+    const name = data.get('name');
 
-    if (typeof id === 'string' && typeof name === 'string') {
-      // ユーザーの保存
-      await db.insert(User).values({ id, name });
-      
-      newUserId = id;
-      newUserName = name;
-      
-      // QRコードの生成
-      // モック用のため、現在のURLのホスト名などを想定して固定のパスを生成します。
-      // 実際には Astro.url.origin などを使用します。
-      const loginUrl = `${Astro.url.origin}/?userId=${id}`;
-      qrCodeDataUrl = await QRCode.toDataURL(loginUrl, {
-        width: 250,
+    if (typeof name === 'string' && name.trim().length > 0) {
+      // ユーザー一覧を取得して新しい通し番号のIDを作成
+      const allUsers = await db.select().from(User);
+      const nextIdNum = allUsers.length + 1;
+      const newUserId = `user${String(nextIdNum).padStart(3, '0')}`;
+
+      // DBにユーザー追加
+      await db.insert(User).values({
+        id: newUserId,
+        name: name.trim()
+      });
+
+      // QRコードを生成（/ ?userId=xxx へのリンク）
+      const loginUrl = new URL(`/?userId=${newUserId}`, Astro.url.origin).toString();
+      qrCodeUrl = await QRCode.toDataURL(loginUrl, {
+        width: 300,
         margin: 2,
         color: {
-          dark: '#1d1d1f', // Apple-like dark ink
+          dark: '#1d1d1f',
           light: '#ffffff'
         }
       });
 
-      message = `${name} さんの登録が完了しました。以下のQRコードを印刷して渡してください。`;
+      registeredUser = { id: newUserId, name: name.trim() };
+    } else {
+      error = "名前を入力してください。";
     }
-  } catch (error) {
-    message = "エラーが発生しました。IDが重複している可能性があります。";
-    console.error(error);
+  } catch (e) {
+    console.error(e);
+    error = "エラーが発生しました。";
   }
 }
 ---
 
 <Layout title="新規利用者登録 | セルフプランニング支援アプリ">
   <div class="max-w-xl mx-auto space-y-8">
-    
-    <div class="flex justify-between items-center">
-      <h2 class="text-2xl font-semibold text-apple-ink tracking-tight">新規利用者登録</h2>
+    <div class="flex items-center justify-between">
+      <div>
+        <h2 class="text-3xl font-semibold text-apple-ink tracking-tight mb-2">新規利用者登録</h2>
+        <p class="text-apple-secondary">利用者の名前を入力すると、専用のQRコードが発行されます。</p>
+      </div>
       <a href="/staff" class="text-apple-blue hover:text-apple-blue-hover font-medium text-sm transition-colors">← 職員管理へ戻る</a>
     </div>
 
-    <div class="bg-white p-8 rounded-2xl shadow-[0_2px_12px_rgba(0,0,0,0.06)] border border-apple-border-soft">
-      {message && (
-        <div class="mb-8 p-4 bg-gray-50 text-apple-ink font-medium rounded-xl border border-apple-border-soft text-center">
-          {message}
-        </div>
-      )}
-
-      {!qrCodeDataUrl ? (
+    {!registeredUser && (
+      <div class="bg-white p-8 rounded-2xl shadow-[0_2px_12px_rgba(0,0,0,0.06)] border border-apple-border-soft">
+        {error && <p class="text-red-500 mb-4 font-medium">{error}</p>}
         <form method="POST" class="space-y-6">
           <div>
-            <label for="userId" class="block text-sm font-semibold text-apple-secondary mb-2">利用者ID (半角英数字)</label>
+            <label for="name" class="block text-sm font-semibold text-apple-secondary mb-2">利用者名</label>
             <input 
               type="text" 
-              id="userId" 
-              name="userId" 
+              id="name" 
+              name="name" 
               required
-              placeholder="user003"
-              class="w-full p-3 bg-apple-gray border border-apple-border-soft rounded-lg focus:border-apple-border-strong focus:bg-white focus:outline-none transition-colors text-apple-ink font-medium"
+              placeholder="例：山田 太郎"
+              class="w-full p-4 bg-apple-gray border border-apple-border-soft rounded-xl focus:border-apple-border-strong focus:bg-white focus:outline-none transition-colors text-apple-ink font-medium"
             >
           </div>
-
-          <div>
-            <label for="userName" class="block text-sm font-semibold text-apple-secondary mb-2">氏名 (表示用)</label>
-            <input 
-              type="text" 
-              id="userName" 
-              name="userName" 
-              required
-              placeholder="田中 健太"
-              class="w-full p-3 bg-apple-gray border border-apple-border-soft rounded-lg focus:border-apple-border-strong focus:bg-white focus:outline-none transition-colors text-apple-ink font-medium"
-            >
-          </div>
-
           <button 
             type="submit" 
-            class="w-full mt-4 bg-apple-ink text-white font-semibold py-3.5 rounded-xl hover:bg-black transition-transform active:scale-[0.98] Register Button (登録)"
+            class="w-full bg-apple-ink text-white font-semibold py-4 rounded-xl hover:bg-black transition-transform active:scale-[0.98] shadow-sm Register Button (登録)"
           >
-            ユーザーを登録する
+            登録してQRコードを発行
           </button>
         </form>
-      ) : (
-        <div class="flex flex-col items-center space-y-6 text-center">
-          <div class="text-apple-ink font-medium">
-            <span class="text-xl font-semibold block mb-1">{newUserName}</span>
-            <span class="text-apple-secondary text-sm">ID: {newUserId}</span>
-          </div>
-          
-          <div class="p-4 bg-white border border-apple-border-soft rounded-2xl shadow-sm">
-            <img src={qrCodeDataUrl} alt={`QR Code for ${newUserName}`} class="w-[200px] h-[200px]" />
-          </div>
+      </div>
+    )}
 
-          <p class="text-sm text-apple-secondary leading-relaxed max-w-[280px]">
-            利用者はこのQRコードをスキャンするだけで、自分の入力画面に直接アクセスできます。
-          </p>
+    {registeredUser && (
+      <div class="bg-white p-10 rounded-2xl shadow-[0_4px_24px_rgba(0,0,0,0.08)] border border-apple-border-soft text-center animate-fade-in">
+        <div class="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl">
+          ✓
+        </div>
+        <h3 class="text-2xl font-bold text-apple-ink mb-1">{registeredUser.name} さんの登録完了</h3>
+        <p class="text-apple-secondary mb-8">自動採番されたID: <span class="font-mono bg-apple-gray px-2 py-1 rounded-md">{registeredUser.id}</span></p>
+        
+        <div class="bg-apple-gray p-6 rounded-2xl inline-block mb-8 border border-apple-border-soft">
+          <img src={qrCodeUrl} alt="Login QR Code" class="w-48 h-48 mx-auto rounded-lg shadow-sm" />
+          <p class="text-xs text-apple-secondary mt-4">このQRコードを印刷して利用者に渡してください。</p>
+        </div>
 
-          <a 
-            href="/staff/users/new" 
-            class="w-full mt-4 bg-apple-blue text-white font-semibold py-3.5 rounded-xl hover:bg-apple-blue-hover transition-transform active:scale-[0.98] Continue Button (続けて登録)"
-          >
+        <div class="space-y-3">
+          <a href="/staff/users/new" class="block w-full bg-apple-gray text-apple-ink font-semibold py-4 rounded-xl hover:bg-gray-200 transition-colors">
             続けて別の利用者を登録する
           </a>
+          <a href="/staff" class="block w-full bg-transparent text-apple-blue font-semibold py-4 rounded-xl hover:bg-apple-blue/5 transition-colors">
+            職員管理画面に戻る
+          </a>
         </div>
-      )}
-    </div>
-
+      </div>
+    )}
   </div>
 </Layout>

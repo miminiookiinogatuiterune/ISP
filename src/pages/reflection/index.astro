@@ -7,6 +7,12 @@ let currentUser = null;
 let longTermGoal = "";
 let shortTermGoals: string[] = [];
 
+// 先月を計算（例: "2026-03"）
+const today = new Date();
+const lastMonthDate = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+const lastMonthStr = `${lastMonthDate.getFullYear()}-${String(lastMonthDate.getMonth() + 1).padStart(2, '0')}`;
+const lastMonthDisplay = `${lastMonthDate.getFullYear()}年${lastMonthDate.getMonth() + 1}月`;
+
 // GETリクエスト時（URLパラメータからuserIdを取得し、目標を表示する）
 const urlUserId = Astro.url.searchParams.get('userId');
 if (urlUserId) {
@@ -48,11 +54,11 @@ if (Astro.request.method === 'POST') {
     if (typeof userId === 'string') {
       await db.insert(Reflection).values({
         userId,
-        targetMonth: '2026-04',
+        targetMonth: lastMonthStr,
         evaluations: JSON.stringify(evaluations),
         changeRequest
       });
-      message = "振り返りを記録しました！";
+      message = "振り返りを記録しました！日々の記録画面に戻ります。";
     }
   } catch (error) {
     message = "エラーが発生しました。";
@@ -61,12 +67,12 @@ if (Astro.request.method === 'POST') {
 }
 ---
 
-<Layout title="振り返り | セルフプランニング支援アプリ">
+<Layout title="先月の振り返り | セルフプランニング支援アプリ">
   <div class="max-w-2xl mx-auto space-y-10">
     
     <div class="text-center mb-6">
-      <h2 class="text-3xl font-semibold text-apple-ink tracking-tight mb-2">今月の振り返り</h2>
-      <p class="text-apple-secondary text-lg">2026年4月の活動データ</p>
+      <h2 class="text-3xl font-semibold text-apple-ink tracking-tight mb-2">先月の振り返り</h2>
+      <p class="text-apple-secondary text-lg">{lastMonthDisplay}の活動データ</p>
     </div>
 
     {/* 活動データパネル */}

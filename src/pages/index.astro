@@ -1,6 +1,6 @@
 ---
 import Layout from '../layouts/Layout.astro';
-import { db, DailyReport, User, eq } from 'astro:db';
+import { db, DailyReport, User, Reflection, eq } from 'astro:db';
 
 let message = "";
 const urlUserId = Astro.url.searchParams.get('userId');
@@ -8,13 +8,28 @@ let defaultUserId = urlUserId || "";
 let userName = "";
 
 // 今日の日付を取得 (例: 2026年4月24日（金）)
-const todayStr = new Date().toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' });
+const today = new Date();
+const todayStr = today.toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' });
 
-// URLにuserIdがあれば名前を取得
+// 先月を計算（例: "2026-03"）
+const lastMonthDate = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+const lastMonthStr = `${lastMonthDate.getFullYear()}-${String(lastMonthDate.getMonth() + 1).padStart(2, '0')}`;
+
+// URLにuserIdがあれば名前を取得し、先月の振り返りが終わっているかチェック
 if (defaultUserId) {
   const users = await db.select().from(User).where(eq(User.id, defaultUserId));
   if (users.length > 0) {
     userName = users[0].name;
+
+    // 先月の振り返りチェック
+    const userReflections = await db.select().from(Reflection).where(eq(Reflection.userId, defaultUserId));
+    const hasReflectedLastMonth = userReflections.some(r => r.targetMonth === lastMonthStr);
+    
+    // もし先月の振り返りが未完了なら、振り返り画面へリダイレクト
+    // （※ただしPOST送信時＝日報送信時はリダイレクトしない）
+    if (!hasReflectedLastMonth && Astro.request.method !== 'POST') {
+      return Astro.redirect(`/reflection?userId=${defaultUserId}`);
+    }
   }
 }
 

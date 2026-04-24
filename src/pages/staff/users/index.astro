@@ -5,7 +5,7 @@ import { db, User } from 'astro:db';
 
 // データを新しい順に取得
 const users = await db.select().from(User);
-const sortedUsers = users.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+const sortedUsers = users.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 ---
 <Layout title="利用者管理 | セルフプランニング支援アプリ">
   <div class="space-y-6 max-w-5xl mx-auto">

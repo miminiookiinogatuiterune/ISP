@@ -1,0 +1,154 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { db, DailyReport } from 'astro:db';
+
+let message = "";
+
+if (Astro.request.method === 'POST') {
+  try {
+    const data = await Astro.request.formData();
+    const userId = data.get('userId');
+    const taskType = data.get('taskType');
+    const taskDuration = Number(data.get('taskDuration'));
+    const healthStatus = Number(data.get('healthStatus'));
+    const comment = data.get('comment');
+
+    if (typeof userId === 'string' && typeof taskType === 'string') {
+      await db.insert(DailyReport).values({
+        userId,
+        taskType,
+        taskDuration,
+        healthStatus,
+        comment: typeof comment === 'string' ? comment.slice(0, 20) : '',
+      });
+      message = "日報を送信しました。お疲れ様でした！";
+    }
+  } catch (error) {
+    message = "エラーが発生しました。";
+    console.error(error);
+  }
+}
+---
+
+<Layout title="日報入力 | セルフプランニング支援アプリ">
+  <div class="max-w-2xl mx-auto bg-white p-6 md:p-10 rounded-2xl shadow-lg border-2 border-blue-100">
+    <h2 class="text-3xl font-extrabold text-center text-blue-700 mb-8 tracking-tight">📝 今日の日報を入力する</h2>
+    
+    {message && (
+      <div class="mb-6 p-4 bg-green-100 text-green-800 text-xl font-bold rounded-xl text-center border-2 border-green-400">
+        {message}
+      </div>
+    )}
+
+    <form method="POST" class="space-y-8">
+      {/* 1. 利用者ID */}
+      <div>
+        <label for="userId" class="block text-2xl font-bold text-gray-800 mb-3">1. あなたのID</label>
+        <input 
+          type="text" 
+          id="userId" 
+          name="userId" 
+          required
+          placeholder="例: user001"
+          class="w-full text-2xl p-4 border-4 border-gray-300 rounded-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-200 transition-all outline-none"
+        >
+      </div>
+
+      {/* 2. 作業内容 */}
+      <div>
+        <label for="taskType" class="block text-2xl font-bold text-gray-800 mb-3">2. どんな作業をしましたか？</label>
+        <div class="relative">
+          <select 
+            id="taskType" 
+            name="taskType" 
+            required
+            class="w-full text-2xl p-4 border-4 border-gray-300 rounded-xl appearance-none bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-200 transition-all outline-none cursor-pointer"
+          >
+            <option value="" disabled selected>選んでください ▼</option>
+            <option value="アクセサリー制作">アクセサリー制作</option>
+            <option value="梱包">梱包（こんぽう）</option>
+            <option value="清掃">清掃（そうじ）</option>
+            <option value="その他">その他</option>
+          </select>
+          <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-6 text-gray-500 text-2xl">
+            ▼
+          </div>
+        </div>
+      </div>
+
+      {/* 3. 作業時間 */}
+      <div>
+        <label class="block text-2xl font-bold text-gray-800 mb-3">3. 何時間作業しましたか？</label>
+        <div class="flex gap-4">
+          <label class="flex-1 cursor-pointer">
+            <input type="radio" name="taskDuration" value="1" class="peer sr-only" required>
+            <div class="text-center text-3xl font-bold py-6 bg-gray-100 text-gray-600 rounded-2xl border-4 border-gray-200 peer-checked:bg-blue-600 peer-checked:text-white peer-checked:border-blue-800 transition-all hover:bg-gray-200">
+              1 時間
+            </div>
+          </label>
+          <label class="flex-1 cursor-pointer">
+            <input type="radio" name="taskDuration" value="2" class="peer sr-only">
+            <div class="text-center text-3xl font-bold py-6 bg-gray-100 text-gray-600 rounded-2xl border-4 border-gray-200 peer-checked:bg-blue-600 peer-checked:text-white peer-checked:border-blue-800 transition-all hover:bg-gray-200">
+              2 時間
+            </div>
+          </label>
+          <label class="flex-1 cursor-pointer">
+            <input type="radio" name="taskDuration" value="3" class="peer sr-only">
+            <div class="text-center text-3xl font-bold py-6 bg-gray-100 text-gray-600 rounded-2xl border-4 border-gray-200 peer-checked:bg-blue-600 peer-checked:text-white peer-checked:border-blue-800 transition-all hover:bg-gray-200">
+              3 時間
+            </div>
+          </label>
+        </div>
+      </div>
+
+      {/* 4. 体調 */}
+      <div>
+        <label class="block text-2xl font-bold text-gray-800 mb-3">4. 今日の体調はどうですか？</label>
+        <div class="flex gap-4">
+          <label class="flex-1 cursor-pointer">
+            <input type="radio" name="healthStatus" value="3" class="peer sr-only" required>
+            <div class="flex flex-col items-center justify-center py-6 bg-gray-100 rounded-2xl border-4 border-gray-200 peer-checked:bg-green-100 peer-checked:border-green-600 transition-all hover:bg-gray-200">
+              <span class="text-6xl mb-2">😄</span>
+              <span class="text-xl font-bold text-gray-700 peer-checked:text-green-800">元気</span>
+            </div>
+          </label>
+          <label class="flex-1 cursor-pointer">
+            <input type="radio" name="healthStatus" value="2" class="peer sr-only">
+            <div class="flex flex-col items-center justify-center py-6 bg-gray-100 rounded-2xl border-4 border-gray-200 peer-checked:bg-yellow-100 peer-checked:border-yellow-500 transition-all hover:bg-gray-200">
+              <span class="text-6xl mb-2">😐</span>
+              <span class="text-xl font-bold text-gray-700 peer-checked:text-yellow-800">ふつう</span>
+            </div>
+          </label>
+          <label class="flex-1 cursor-pointer">
+            <input type="radio" name="healthStatus" value="1" class="peer sr-only">
+            <div class="flex flex-col items-center justify-center py-6 bg-gray-100 rounded-2xl border-4 border-gray-200 peer-checked:bg-red-100 peer-checked:border-red-600 transition-all hover:bg-gray-200">
+              <span class="text-6xl mb-2">😷</span>
+              <span class="text-xl font-bold text-gray-700 peer-checked:text-red-800">よくない</span>
+            </div>
+          </label>
+        </div>
+      </div>
+
+      {/* 5. 一言コメント */}
+      <div>
+        <label for="comment" class="block text-2xl font-bold text-gray-800 mb-3">5. 一言コメント（20文字まで）</label>
+        <input 
+          type="text" 
+          id="comment" 
+          name="comment" 
+          maxlength="20"
+          placeholder="短く感想を書いてください"
+          class="w-full text-2xl p-4 border-4 border-gray-300 rounded-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-200 transition-all outline-none"
+        >
+      </div>
+
+      {/* 送信ボタン */}
+      <button 
+        type="submit" 
+        class="w-full text-3xl font-extrabold text-white bg-blue-600 py-6 rounded-2xl shadow-xl hover:bg-blue-700 active:scale-95 transition-transform Submit Button (送信)"
+      >
+        📤 この内容で送信する
+      </button>
+    </form>
+  </div>
+</Layout>

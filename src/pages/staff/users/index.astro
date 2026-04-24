@@ -1,0 +1,47 @@
+---
+import Layout from '../../../layouts/Layout.astro';
+import StaffNav from '../../../components/StaffNav.astro';
+import { db, User } from 'astro:db';
+
+// データを新しい順に取得
+const users = await db.select().from(User);
+const sortedUsers = users.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+---
+<Layout title="利用者管理 | セルフプランニング支援アプリ">
+  <div class="space-y-6 max-w-5xl mx-auto">
+    <div class="mb-8">
+      <h2 class="text-3xl font-semibold text-apple-ink tracking-tight mb-2">職員管理画面</h2>
+      <StaffNav current="users" />
+    </div>
+
+    <div class="flex justify-between items-end mb-4 px-2">
+      <div>
+        <h3 class="text-xl font-semibold text-apple-ink tracking-tight mb-1">利用者・目標管理</h3>
+        <p class="text-sm text-apple-secondary">個別支援計画の目標設定とQRコード管理</p>
+      </div>
+      <div class="flex gap-3">
+        <a href="/staff/users/new" class="bg-apple-ink text-white px-5 py-2.5 rounded-full text-sm font-semibold hover:bg-black transition-colors Add User Button (新規登録)">
+          ＋ 新規利用者登録
+        </a>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-[24px] shadow-[0_4px_24px_rgba(0,0,0,0.04)] border border-apple-border-soft overflow-hidden p-6">
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {sortedUsers.map(user => (
+          <div class="bg-apple-gray p-6 rounded-2xl border border-apple-border-soft relative group">
+            <h4 class="text-lg font-semibold text-apple-ink mb-1">{user.name}</h4>
+            <p class="text-xs text-apple-secondary font-mono mb-4">ID: {user.id}</p>
+            <div class="space-y-2 mb-6">
+              <div class="text-xs text-apple-secondary">長期目標: <span class={user.longTermGoal ? 'text-apple-ink font-medium' : 'text-apple-secondary'}>{user.longTermGoal ? '設定済' : '未設定'}</span></div>
+              <div class="text-xs text-apple-secondary">短期目標: <span class={user.shortTermGoals ? 'text-apple-ink font-medium' : 'text-apple-secondary'}>{user.shortTermGoals ? '設定済' : '未設定'}</span></div>
+            </div>
+            <a href={`/staff/users/${user.id}`} class="block w-full text-center bg-white text-apple-blue border border-apple-border-soft py-2.5 rounded-lg text-sm font-semibold hover:bg-gray-50 transition-colors Edit Goal Button">
+              目標を編集する
+            </a>
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+</Layout>

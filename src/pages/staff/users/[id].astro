@@ -1,0 +1,98 @@
+---
+import Layout from '../../../layouts/Layout.astro';
+import { db, User, eq } from 'astro:db';
+
+const { id } = Astro.params;
+let message = "";
+
+// 現在のユーザー情報を取得
+const users = await db.select().from(User).where(eq(User.id, id as string));
+if (users.length === 0) {
+  return Astro.redirect('/staff');
+}
+const user = users[0];
+
+if (Astro.request.method === 'POST') {
+  try {
+    const data = await Astro.request.formData();
+    const longTermGoal = data.get('longTermGoal');
+    const shortTermGoals = data.get('shortTermGoals');
+
+    if (typeof longTermGoal === 'string' && typeof shortTermGoals === 'string') {
+      // ユーザー情報の更新
+      // 注意: Astro DBのローカルモック環境用のため、実際にはupdate文を使用しますが
+      // 今回のAstro DB v0.xの基本チュートリアル構成に合わせてupdateを使用します
+      await db.update(User)
+        .set({ 
+          longTermGoal, 
+          shortTermGoals 
+        })
+        .where(eq(User.id, id as string));
+        
+      message = "目標を更新しました。";
+      
+      // 更新後のデータを再取得して表示に反映
+      user.longTermGoal = longTermGoal;
+      user.shortTermGoals = shortTermGoals;
+    }
+  } catch (error) {
+    message = "エラーが発生しました。";
+    console.error(error);
+  }
+}
+---
+
+<Layout title={`${user.name} さんの目標設定 | セルフプランニング支援アプリ`}>
+  <div class="max-w-xl mx-auto space-y-8">
+    
+    <div class="flex justify-between items-center">
+      <div>
+        <h2 class="text-2xl font-semibold text-apple-ink tracking-tight mb-1">{user.name} さん</h2>
+        <p class="text-sm text-apple-secondary">ID: {user.id} / 目標設定</p>
+      </div>
+      <a href="/staff" class="text-apple-blue hover:text-apple-blue-hover font-medium text-sm transition-colors">← 職員管理へ戻る</a>
+    </div>
+
+    <div class="bg-white p-8 rounded-2xl shadow-[0_2px_12px_rgba(0,0,0,0.06)] border border-apple-border-soft">
+      {message && (
+        <div class="mb-8 p-4 bg-gray-50 text-apple-ink font-medium rounded-xl border border-apple-border-soft text-center">
+          {message}
+        </div>
+      )}
+
+      <form method="POST" class="space-y-6">
+        <div>
+          <label for="longTermGoal" class="block text-sm font-semibold text-apple-secondary mb-2">長期目標（1つ）</label>
+          <input 
+            type="text" 
+            id="longTermGoal" 
+            name="longTermGoal" 
+            value={user.longTermGoal || ''}
+            placeholder="例：一人で梱包作業が最後までできるようになる"
+            class="w-full p-3 bg-apple-gray border border-apple-border-soft rounded-lg focus:border-apple-border-strong focus:bg-white focus:outline-none transition-colors text-apple-ink font-medium"
+          >
+        </div>
+
+        <div>
+          <label for="shortTermGoals" class="block text-sm font-semibold text-apple-secondary mb-2">短期目標（3〜6つ程度 / 改行して入力してください）</label>
+          <textarea 
+            id="shortTermGoals" 
+            name="shortTermGoals" 
+            rows="6"
+            placeholder="例：&#13;&#10;挨拶を大きな声でする&#13;&#10;わからないことはすぐ職員に聞く&#13;&#10;1時間に1回は休憩のサインを出す"
+            class="w-full p-3 bg-apple-gray border border-apple-border-soft rounded-lg focus:border-apple-border-strong focus:bg-white focus:outline-none transition-colors text-apple-ink font-medium resize-none"
+          >{user.shortTermGoals || ''}</textarea>
+          <p class="text-xs text-apple-secondary mt-2">※将来的にエクセルなどをインポートして自動設定する機能を追加予定です。</p>
+        </div>
+
+        <button 
+          type="submit" 
+          class="w-full mt-4 bg-apple-ink text-white font-semibold py-3.5 rounded-xl hover:bg-black transition-transform active:scale-[0.98] Save Goals Button (保存)"
+        >
+          目標を保存する
+        </button>
+      </form>
+    </div>
+
+  </div>
+</Layout>

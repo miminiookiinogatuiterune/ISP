@@ -7,6 +7,9 @@ const urlUserId = Astro.url.searchParams.get('userId');
 let defaultUserId = urlUserId || "";
 let userName = "";
 
+// 今日の日付を取得 (例: 2026年4月24日（金）)
+const todayStr = new Date().toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' });
+
 // URLにuserIdがあれば名前を取得
 if (defaultUserId) {
   const users = await db.select().from(User).where(eq(User.id, defaultUserId));
@@ -19,16 +22,24 @@ if (Astro.request.method === 'POST') {
   try {
     const data = await Astro.request.formData();
     const userId = data.get('userId');
-    const taskType = data.get('taskType');
-    const taskDuration = Number(data.get('taskDuration'));
+    let taskType = data.get('taskType');
+    const taskOtherDetail = data.get('taskOtherDetail');
+    const startTime = data.get('startTime');
+    const endTime = data.get('endTime');
     const healthStatus = Number(data.get('healthStatus'));
     const comment = data.get('comment');
 
-    if (typeof userId === 'string' && typeof taskType === 'string') {
+    // 「その他」が選択されていて、詳細が入力されている場合は結合する
+    if (taskType === 'その他' && typeof taskOtherDetail === 'string' && taskOtherDetail.trim() !== '') {
+      taskType = `その他：${taskOtherDetail.slice(0, 20)}`;
+    }
+
+    if (typeof userId === 'string' && typeof taskType === 'string' && typeof startTime === 'string' && typeof endTime === 'string') {
       await db.insert(DailyReport).values({
         userId,
         taskType,
-        taskDuration,
+        startTime,
+        endTime,
         healthStatus,
         comment: typeof comment === 'string' ? comment.slice(0, 20) : '',
       });
@@ -39,11 +50,23 @@ if (Astro.request.method === 'POST') {
     console.error(error);
   }
 }
+
+// 5分刻みの時間リストを生成 (09:00 〜 18:00)
+const timeOptions: string[] = [];
+for (let h = 9; h <= 18; h++) {
+  for (let m = 0; m < 60; m += 5) {
+    if (h === 18 && m > 0) continue;
+    const hour = h.toString().padStart(2, '0');
+    const min = m.toString().padStart(2, '0');
+    timeOptions.push(`${hour}:${min}`);
+  }
+}
 ---
 
 <Layout title="日報入力 | セルフプランニング支援アプリ">
   <div class="max-w-xl mx-auto bg-white p-8 md:p-12 rounded-[24px] shadow-[0_4px_24px_rgba(0,0,0,0.04)] border border-apple-border-soft">
     <div class="text-center mb-10">
+      <div class="text-sm font-semibold text-apple-secondary mb-2">{todayStr}</div>
       <h2 class="text-3xl font-semibold text-apple-ink tracking-tight mb-2">今日の日報</h2>
       {userName ? (
         <p class="text-apple-secondary text-lg">ようこそ、<span class="font-semibold text-apple-ink">{userName}</span> さん</p>
@@ -59,7 +82,7 @@ if (Astro.request.method === 'POST') {
     )}
 
     {!message && (
-      <form method="POST" class="space-y-10">
+      <form method="POST" class="space-y-10" id="dailyReportForm">
         {/* 1. 利用者ID (URLパラメータがある場合は非表示で送信、ない場合は入力) */}
         {defaultUserId ? (
           <input type="hidden" name="userId" value={defaultUserId} />
@@ -80,30 +103,57 @@ if (Astro.request.method === 'POST') {
         {/* 2. 作業内容 */}
         <div>
           <label class="block text-sm font-semibold text-apple-secondary mb-3">2. どんな作業をしましたか？</label>
-          <div class="grid grid-cols-2 gap-3">
+          <div class="grid grid-cols-2 gap-3 mb-3">
             {['アクセサリー制作', '梱包', '清掃', 'その他'].map((task) => (
               <label class="cursor-pointer relative">
-                <input type="radio" name="taskType" value={task} class="peer sr-only" required>
+                <input type="radio" name="taskType" value={task} class="peer sr-only task-radio" required>
                 <div class="text-center py-4 bg-apple-gray text-apple-ink rounded-xl border border-transparent peer-checked:bg-apple-blue peer-checked:text-white transition-all hover:bg-gray-200 peer-checked:hover:bg-apple-blue font-medium text-sm md:text-base">
                   {task}
                 </div>
               </label>
             ))}
           </div>
+          {/* その他を選択した時の詳細入力欄（JSで表示切り替え） */}
+          <div id="otherDetailWrapper" class="hidden">
+            <input 
+              type="text" 
+              name="taskOtherDetail" 
+              maxlength="20"
+              placeholder="午前・午後など、自由に入力（20文字まで）"
+              class="w-full p-4 bg-apple-gray border border-apple-border-soft rounded-xl focus:border-apple-border-strong focus:bg-white focus:outline-none transition-colors text-apple-ink font-medium text-sm"
+            >
+          </div>
         </div>
 
-        {/* 3. 作業時間 */}
+        {/* 3. 作業時間（出退勤） */}
         <div>
-          <label class="block text-sm font-semibold text-apple-secondary mb-3">3. 何時間作業しましたか？</label>
-          <div class="flex gap-3">
-            {[1, 2, 3].map((time) => (
-              <label class="flex-1 cursor-pointer">
-                <input type="radio" name="taskDuration" value={time} class="peer sr-only" required>
-                <div class="text-center py-4 bg-apple-gray text-apple-ink rounded-xl border border-transparent peer-checked:bg-apple-ink peer-checked:text-white transition-all hover:bg-gray-200 peer-checked:hover:bg-apple-ink font-semibold text-lg">
-                  {time}h
-                </div>
-              </label>
-            ))}
+          <label class="block text-sm font-semibold text-apple-secondary mb-3">3. 今日の時間は？</label>
+          <div class="flex items-center gap-4">
+            <div class="flex-1">
+              <label for="startTime" class="block text-xs font-semibold text-apple-secondary mb-1">出勤時間</label>
+              <div class="relative">
+                <select name="startTime" id="startTime" required class="w-full p-4 bg-apple-gray border border-apple-border-soft rounded-xl focus:border-apple-border-strong focus:bg-white focus:outline-none transition-colors text-apple-ink font-semibold text-lg appearance-none cursor-pointer">
+                  <option value="" disabled selected>--:--</option>
+                  {timeOptions.map(time => (
+                    <option value={time}>{time}</option>
+                  ))}
+                </select>
+                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-apple-secondary">▼</div>
+              </div>
+            </div>
+            <div class="text-apple-secondary font-semibold mt-4">〜</div>
+            <div class="flex-1">
+              <label for="endTime" class="block text-xs font-semibold text-apple-secondary mb-1">退勤時間</label>
+              <div class="relative">
+                <select name="endTime" id="endTime" required class="w-full p-4 bg-apple-gray border border-apple-border-soft rounded-xl focus:border-apple-border-strong focus:bg-white focus:outline-none transition-colors text-apple-ink font-semibold text-lg appearance-none cursor-pointer">
+                  <option value="" disabled selected>--:--</option>
+                  {timeOptions.map(time => (
+                    <option value={time}>{time}</option>
+                  ))}
+                </select>
+                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-apple-secondary">▼</div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -129,7 +179,7 @@ if (Astro.request.method === 'POST') {
 
         {/* 5. 一言コメント */}
         <div>
-          <label for="comment" class="block text-sm font-semibold text-apple-secondary mb-2">5. 一言コメント（20文字まで）</label>
+          <label for="comment" class="block text-sm font-semibold text-apple-secondary mb-2">5. 今日やったことや感想（20文字まで）</label>
           <input 
             type="text" 
             id="comment" 
@@ -152,4 +202,27 @@ if (Astro.request.method === 'POST') {
       </form>
     )}
   </div>
+
+  <script>
+    // 「その他」が選択された時に詳細入力欄を表示する処理
+    const radios = document.querySelectorAll('.task-radio');
+    const otherDetailWrapper = document.getElementById('otherDetailWrapper');
+
+    radios.forEach(radio => {
+      radio.addEventListener('change', (e) => {
+        if ((e.target as HTMLInputElement).value === 'その他') {
+          otherDetailWrapper?.classList.remove('hidden');
+          const input = otherDetailWrapper?.querySelector('input');
+          if (input) input.required = true;
+        } else {
+          otherDetailWrapper?.classList.add('hidden');
+          const input = otherDetailWrapper?.querySelector('input');
+          if (input) {
+            input.required = false;
+            input.value = '';
+          }
+        }
+      });
+    });
+  </script>
 </Layout>

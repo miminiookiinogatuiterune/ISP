@@ -2,7 +2,7 @@
 import Layout from '../../layouts/Layout.astro';
 import { db, DailyReport, User, eq } from 'astro:db';
 
-// データの取得 (UserテーブルをJoinして名前も取得できるようにする)
+// データの取得
 const reportsRaw = await db.select().from(DailyReport);
 const users = await db.select().from(User);
 
@@ -16,17 +16,7 @@ const reports = reportsRaw.map(report => {
 }).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 
 if (Astro.request.method === 'POST') {
-  try {
-    const data = await Astro.request.formData();
-    const id = Number(data.get('id'));
-    const staffNote = data.get('staffNote');
-
-    if (id && typeof staffNote === 'string') {
-      // 本来は update()
-    }
-  } catch (error) {
-    console.error(error);
-  }
+  // ...
 }
 ---
 
@@ -54,44 +44,39 @@ if (Astro.request.method === 'POST') {
               <th class="p-4 font-semibold whitespace-nowrap">作業</th>
               <th class="p-4 font-semibold whitespace-nowrap text-center">体調</th>
               <th class="p-4 font-semibold w-1/4">コメント</th>
-              <th class="p-4 font-semibold w-1/4">特記事項</th>
+              <th class="p-4 font-semibold w-1/4">アクション</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-apple-border-soft">
             {reports.map((report) => (
               <tr class="hover:bg-gray-50/50 transition-colors">
-                <td class="p-4 text-apple-secondary">
-                  {new Date(report.createdAt).toLocaleDateString('ja-JP')}
+                <td class="p-4 text-apple-secondary whitespace-nowrap">
+                  {new Date(report.createdAt).toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric', weekday: 'short' })}
                 </td>
                 <td class="p-4">
                   <div class="font-semibold text-apple-ink">{report.userName}</div>
                   <div class="text-xs text-apple-secondary mt-0.5">{report.userId}</div>
                 </td>
                 <td class="p-4">
-                  <span class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-apple-gray text-apple-ink border border-apple-border-soft">
-                    {report.taskType} <span class="ml-1.5 text-apple-secondary">{report.taskDuration}h</span>
-                  </span>
+                  <div class="inline-flex flex-col gap-1">
+                    <span class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-apple-gray text-apple-ink border border-apple-border-soft w-fit">
+                      {report.taskType}
+                    </span>
+                    <span class="text-xs font-semibold text-apple-secondary ml-1">
+                      {report.startTime} - {report.endTime}
+                    </span>
+                  </div>
                 </td>
                 <td class="p-4 text-center text-xl">
                   {report.healthStatus === 3 ? '😄' : report.healthStatus === 2 ? '😐' : '😷'}
                 </td>
-                <td class="p-4 text-apple-ink break-words">
+                <td class="p-4 text-apple-ink break-words text-xs">
                   {report.comment || <span class="text-apple-border-soft">-</span>}
                 </td>
                 <td class="p-4">
-                  <form method="POST" class="flex gap-2">
-                    <input type="hidden" name="id" value={report.id} />
-                    <input 
-                      type="text" 
-                      name="staffNote" 
-                      value={report.staffNote || ''} 
-                      placeholder="追記..." 
-                      class="flex-1 min-w-[120px] border border-apple-border-soft rounded-lg px-3 py-1.5 text-sm focus:border-apple-border-strong focus:outline-none transition-colors"
-                    />
-                    <button type="submit" class="bg-apple-gray text-apple-ink border border-apple-border-soft px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-gray-200 transition-colors Save Button (保存)">
-                      保存
-                    </button>
-                  </form>
+                  <a href={`/staff/users/${report.userId}`} class="inline-block bg-white text-apple-blue border border-apple-border-soft px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-apple-gray transition-colors Edit Goal Button (目標編集)">
+                    目標設定
+                  </a>
                 </td>
               </tr>
             ))}

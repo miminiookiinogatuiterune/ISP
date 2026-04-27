@@ -86,7 +86,10 @@ for (let h = 9; h <= 18; h++) {
       {userName ? (
         <p class="text-apple-secondary text-lg">ようこそ、<span class="font-semibold text-apple-ink">{userName}</span> さん</p>
       ) : (
-        <p class="text-apple-secondary text-lg">今日の記録を入力してください</p>
+        <div class="p-6 mt-4 bg-red-50 text-red-700 font-semibold rounded-2xl border border-red-200">
+          <p class="text-lg mb-2">⚠️ 直接のアクセスはできません</p>
+          <p class="text-sm font-normal">施設から配布された「専用のQRコード」を読み込んでアクセスしてください。</p>
+        </div>
       )}
     </div>
     
@@ -96,24 +99,9 @@ for (let h = 9; h <= 18; h++) {
       </div>
     )}
 
-    {!message && (
+    {!message && userName && (
       <form method="POST" class="space-y-10" id="dailyReportForm">
-        {/* 1. 利用者ID (URLパラメータがある場合は非表示で送信、ない場合は入力) */}
-        {defaultUserId ? (
-          <input type="hidden" name="userId" value={defaultUserId} />
-        ) : (
-          <div>
-            <label for="userId" class="block text-sm font-semibold text-apple-secondary mb-2">1. あなたのID</label>
-            <input 
-              type="text" 
-              id="userId" 
-              name="userId" 
-              required
-              placeholder="user001"
-              class="w-full p-4 bg-apple-gray border border-apple-border-soft rounded-xl focus:border-apple-border-strong focus:bg-white focus:outline-none transition-colors text-apple-ink font-medium"
-            >
-          </div>
-        )}
+        <input type="hidden" name="userId" value={defaultUserId} />
 
         {/* 2. 作業内容 */}
         <div>

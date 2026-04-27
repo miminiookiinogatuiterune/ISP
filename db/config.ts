@@ -35,6 +35,17 @@ const Reflection = defineTable({
   }
 });
 
+const Assessment = defineTable({
+  columns: {
+    id: column.number({ primaryKey: true }),
+    userId: column.text(),
+    disabilityStatus: column.text({ optional: true }),
+    workConsiderations: column.text({ optional: true }),
+    status: column.text({ default: 'draft' }), // 'draft' or 'approved'
+    createdAt: column.date({ default: NOW }),
+  }
+});
+
 export default defineDb({
-  tables: { User, DailyReport, Reflection }
+  tables: { User, DailyReport, Reflection, Assessment }
 });

@@ -1,6 +1,7 @@
 ---
 import Layout from '../../../layouts/Layout.astro';
 import { db, User, eq } from 'astro:db';
+import QRCode from 'qrcode';
 
 const { id } = Astro.params;
 let message = "";
@@ -12,6 +13,14 @@ if (users.length === 0) {
 }
 const user = users[0];
 
+// ログイン用QRコードの生成
+const loginUrl = new URL(`/?userId=${user.id}`, Astro.url.origin).toString();
+const qrCodeDataUrl = await QRCode.toDataURL(loginUrl, {
+  color: { dark: '#1d1d1f', light: '#f5f5f7' },
+  width: 180,
+  margin: 2
+});
+
 if (Astro.request.method === 'POST') {
   try {
     const data = await Astro.request.formData();
@@ -19,9 +28,6 @@ if (Astro.request.method === 'POST') {
     const shortTermGoals = data.get('shortTermGoals');
 
     if (typeof longTermGoal === 'string' && typeof shortTermGoals === 'string') {
-      // ユーザー情報の更新
-      // 注意: Astro DBのローカルモック環境用のため、実際にはupdate文を使用しますが
-      // 今回のAstro DB v0.xの基本チュートリアル構成に合わせてupdateを使用します
       await db.update(User)
         .set({ 
           longTermGoal, 
@@ -29,7 +35,7 @@ if (Astro.request.method === 'POST') {
         })
         .where(eq(User.id, id as string));
         
-      message = "目標を更新しました。";
+      message = "✅ 目標を保存しました！";
       
       // 更新後のデータを再取得して表示に反映
       user.longTermGoal = longTermGoal;
@@ -43,22 +49,34 @@ if (Astro.request.method === 'POST') {
 ---
 
 <Layout title={`${user.name} さんの目標設定 | セルフプランニング支援アプリ`}>
-  <div class="max-w-xl mx-auto space-y-8">
+  <div class="max-w-3xl mx-auto space-y-8">
     
     <div class="flex justify-between items-center">
       <div>
         <h2 class="text-2xl font-semibold text-apple-ink tracking-tight mb-1">{user.name} さん</h2>
-        <p class="text-sm text-apple-secondary">ID: {user.id} / 目標設定</p>
+        <p class="text-sm text-apple-secondary">ID: {user.id} / 目標設定・ログイン情報</p>
       </div>
       <a href="/staff" class="text-apple-blue hover:text-apple-blue-hover font-medium text-sm transition-colors">← 職員管理へ戻る</a>
     </div>
 
-    <div class="bg-white p-8 rounded-2xl shadow-[0_2px_12px_rgba(0,0,0,0.06)] border border-apple-border-soft">
-      {message && (
-        <div class="mb-8 p-4 bg-gray-50 text-apple-ink font-medium rounded-xl border border-apple-border-soft text-center">
-          {message}
+    {message && (
+      <div class="p-4 bg-green-50 text-green-700 font-bold rounded-xl border border-green-200 text-center shadow-sm animate-fade-in">
+        {message}
+      </div>
+    )}
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      {/* ログイン用QRコード */}
+      <div class="md:col-span-1 bg-white p-6 rounded-2xl shadow-[0_2px_12px_rgba(0,0,0,0.06)] border border-apple-border-soft text-center h-fit">
+        <h3 class="font-semibold text-apple-ink mb-4 text-sm">日報入力用QRコード</h3>
+        <div class="bg-apple-gray rounded-xl p-4 inline-block mb-3">
+          <img src={qrCodeDataUrl} alt="Login QR Code" class="w-full h-auto rounded-lg mix-blend-multiply" />
         </div>
-      )}
+        <p class="text-xs text-apple-secondary">このQRコードを印刷して、利用者の机やバインダーに貼ることで、スムーズに日報入力ができます。</p>
+      </div>
+
+      {/* 目標設定フォーム */}
+      <div class="md:col-span-2 bg-white p-8 rounded-2xl shadow-[0_2px_12px_rgba(0,0,0,0.06)] border border-apple-border-soft">
 
       <form method="POST" class="space-y-6">
         <div>
@@ -92,6 +110,7 @@ if (Astro.request.method === 'POST') {
           目標を保存する
         </button>
       </form>
+      </div>
     </div>
 
   </div>

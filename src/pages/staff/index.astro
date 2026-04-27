@@ -34,6 +34,10 @@ if (Astro.request.method === 'POST') {
         <h3 class="text-xl font-semibold text-apple-ink tracking-tight mb-1">利用者日報一覧</h3>
         <p class="text-sm text-apple-secondary">直近に入力された日報（App A のデータ）</p>
       </div>
+      <a href="/api/export-reports" target="_blank" class="bg-apple-gray text-apple-ink border border-apple-border-soft px-4 py-2 rounded-xl text-sm font-semibold hover:bg-white transition-colors flex items-center gap-2">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+        CSVエクスポート
+      </a>
     </div>
 
     <div class="bg-white rounded-[24px] shadow-[0_4px_24px_rgba(0,0,0,0.04)] border border-apple-border-soft overflow-hidden">

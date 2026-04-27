@@ -1,0 +1,112 @@
+---
+import Layout from '../../../layouts/Layout.astro';
+import { db, DailyReport, User, eq } from 'astro:db';
+
+const { id } = Astro.params;
+let message = "";
+
+// 日報データを取得
+const reports = await db.select().from(DailyReport).where(eq(DailyReport.id, Number(id)));
+if (reports.length === 0) {
+  return Astro.redirect('/staff');
+}
+const report = reports[0];
+
+// ユーザー情報を取得
+const users = await db.select().from(User).where(eq(User.id, report.userId));
+const user = users.length > 0 ? users[0] : { name: '不明なユーザー' };
+
+if (Astro.request.method === 'POST') {
+  try {
+    const data = await Astro.request.formData();
+    const staffNote = data.get('staffNote');
+
+    if (typeof staffNote === 'string') {
+      await db.update(DailyReport)
+        .set({ staffNote })
+        .where(eq(DailyReport.id, Number(id)));
+        
+      message = "✅ コメントを保存しました！";
+      report.staffNote = staffNote;
+    }
+  } catch (error) {
+    message = "エラーが発生しました。";
+    console.error(error);
+  }
+}
+
+const dateStr = new Date(report.createdAt).toLocaleDateString('ja-JP', { 
+  year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' 
+});
+---
+
+<Layout title="日報コメント追記 | セルフプランニング支援アプリ">
+  <div class="max-w-3xl mx-auto space-y-8">
+    
+    <div class="flex justify-between items-center">
+      <div>
+        <h2 class="text-2xl font-semibold text-apple-ink tracking-tight mb-1">日報詳細・コメント追記</h2>
+        <p class="text-sm text-apple-secondary">{dateStr} / {user.name} さん</p>
+      </div>
+      <a href="/staff" class="text-apple-blue hover:text-apple-blue-hover font-medium text-sm transition-colors">← 職員管理へ戻る</a>
+    </div>
+
+    {message && (
+      <div class="p-4 bg-green-50 text-green-700 font-bold rounded-xl border border-green-200 text-center shadow-sm animate-fade-in">
+        {message}
+      </div>
+    )}
+
+    <div class="bg-white p-8 rounded-2xl shadow-[0_2px_12px_rgba(0,0,0,0.06)] border border-apple-border-soft space-y-8">
+      
+      {/* 日報の内容確認 */}
+      <div class="bg-apple-gray p-6 rounded-2xl border border-apple-border-soft space-y-4">
+        <h3 class="text-sm font-bold text-apple-secondary border-b border-apple-border-soft pb-2">利用者の入力内容</h3>
+        
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <div class="text-xs text-apple-secondary mb-1">作業内容</div>
+            <div class="font-medium text-apple-ink">{report.taskType}</div>
+          </div>
+          <div>
+            <div class="text-xs text-apple-secondary mb-1">作業時間</div>
+            <div class="font-medium text-apple-ink">{report.startTime} - {report.endTime}</div>
+          </div>
+          <div>
+            <div class="text-xs text-apple-secondary mb-1">体調</div>
+            <div class="text-2xl">{report.healthStatus === 3 ? '😄 (良い)' : report.healthStatus === 2 ? '😐 (普通)' : '😷 (悪い)'}</div>
+          </div>
+        </div>
+        
+        {report.comment && (
+          <div class="pt-2 border-t border-apple-border-soft">
+            <div class="text-xs text-apple-secondary mb-1">本人のコメント</div>
+            <p class="text-sm text-apple-ink bg-white p-3 rounded-xl border border-apple-border-soft">{report.comment}</p>
+          </div>
+        )}
+      </div>
+
+      {/* 職員コメント入力フォーム */}
+      <form method="POST" class="space-y-6">
+        <div>
+          <label for="staffNote" class="block text-sm font-semibold text-apple-secondary mb-2">職員からのフィードバック・特記事項</label>
+          <textarea 
+            id="staffNote" 
+            name="staffNote" 
+            rows="5" 
+            placeholder="利用者の日報に対するフィードバックや、支援者として気づいた点を入力してください..."
+            class="w-full p-4 bg-apple-gray border border-apple-border-soft rounded-xl focus:border-apple-border-strong focus:bg-white focus:outline-none transition-colors text-apple-ink text-sm"
+          >{report.staffNote || ''}</textarea>
+        </div>
+
+        <button 
+          type="submit" 
+          class="w-full bg-apple-blue text-white font-semibold py-3.5 rounded-xl hover:bg-apple-blue-hover shadow-[0_4px_14px_rgba(0,113,227,0.3)] transition-all active:scale-[0.98]"
+        >
+          コメントを保存する
+        </button>
+      </form>
+      
+    </div>
+  </div>
+</Layout>

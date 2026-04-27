@@ -33,8 +33,12 @@ const sortedUsers = users.sort((a, b) => new Date(b.createdAt).getTime() - new D
             <h4 class="text-lg font-semibold text-apple-ink mb-1">{user.name}</h4>
             <p class="text-xs text-apple-secondary font-mono mb-4">ID: {user.id}</p>
             <div class="space-y-2 mb-6">
-              <div class="text-xs text-apple-secondary">長期目標: <span class={user.longTermGoal ? 'text-apple-ink font-medium' : 'text-apple-secondary'}>{user.longTermGoal ? '設定済' : '未設定'}</span></div>
-              <div class="text-xs text-apple-secondary">短期目標: <span class={user.shortTermGoals ? 'text-apple-ink font-medium' : 'text-apple-secondary'}>{user.shortTermGoals ? '設定済' : '未設定'}</span></div>
+              <div class="text-xs text-apple-secondary">
+                長期目標: <span class={user.longTermGoal ? 'text-apple-ink font-medium' : 'text-apple-secondary'}>{user.longTermGoal ? (user.longTermGoal.length > 15 ? user.longTermGoal.slice(0, 15) + '...' : user.longTermGoal) : '未設定'}</span>
+              </div>
+              <div class="text-xs text-apple-secondary">
+                短期目標: <span class={user.shortTermGoals ? 'text-apple-ink font-medium' : 'text-apple-secondary'}>{user.shortTermGoals ? (user.shortTermGoals.split('\n')[0].length > 15 ? user.shortTermGoals.split('\n')[0].slice(0, 15) + '...' : user.shortTermGoals.split('\n')[0]) : '未設定'}</span>
+              </div>
             </div>
             <a href={`/staff/users/${user.id}`} class="block w-full text-center bg-white text-apple-blue border border-apple-border-soft py-2.5 rounded-lg text-sm font-semibold hover:bg-gray-50 transition-colors Edit Goal Button">
               目標を編集する

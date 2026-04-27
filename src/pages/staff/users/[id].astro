@@ -24,22 +24,33 @@ const qrCodeDataUrl = await QRCode.toDataURL(loginUrl, {
 if (Astro.request.method === 'POST') {
   try {
     const data = await Astro.request.formData();
-    const longTermGoal = data.get('longTermGoal');
-    const shortTermGoals = data.get('shortTermGoals');
+    const action = data.get('action');
 
-    if (typeof longTermGoal === 'string' && typeof shortTermGoals === 'string') {
-      await db.update(User)
-        .set({ 
-          longTermGoal, 
-          shortTermGoals 
-        })
-        .where(eq(User.id, id as string));
-        
-      message = "✅ 目標を保存しました！";
-      
-      // 更新後のデータを再取得して表示に反映
-      user.longTermGoal = longTermGoal;
-      user.shortTermGoals = shortTermGoals;
+    if (action === 'updateGoals') {
+      const longTermGoal = data.get('longTermGoal');
+      const shortTermGoals = data.get('shortTermGoals');
+
+      if (typeof longTermGoal === 'string' && typeof shortTermGoals === 'string') {
+        await db.update(User)
+          .set({ longTermGoal, shortTermGoals })
+          .where(eq(User.id, id as string));
+          
+        message = "✅ 目標を保存しました！";
+        user.longTermGoal = longTermGoal;
+        user.shortTermGoals = shortTermGoals;
+      }
+    } else if (action === 'updateName') {
+      const name = data.get('name');
+      if (typeof name === 'string' && name.trim() !== '') {
+        await db.update(User)
+          .set({ name: name.trim() })
+          .where(eq(User.id, id as string));
+        message = "✅ 利用者名を更新しました！";
+        user.name = name.trim();
+      }
+    } else if (action === 'deleteUser') {
+      await db.delete(User).where(eq(User.id, id as string));
+      return Astro.redirect('/staff/users');
     }
   } catch (error) {
     message = "エラーが発生しました。";
@@ -48,7 +59,7 @@ if (Astro.request.method === 'POST') {
 }
 ---
 
-<Layout title={`${user.name} さんの目標設定 | セルフプランニング支援アプリ`}>
+<Layout title={`${user.name} さんの情報 | セルフプランニング支援アプリ`}>
   <div class="max-w-3xl mx-auto space-y-8">
     
     <div class="flex justify-between items-center">
@@ -56,7 +67,7 @@ if (Astro.request.method === 'POST') {
         <h2 class="text-2xl font-semibold text-apple-ink tracking-tight mb-1">{user.name} さん</h2>
         <p class="text-sm text-apple-secondary">ID: {user.id} / 目標設定・ログイン情報</p>
       </div>
-      <a href="/staff" class="text-apple-blue hover:text-apple-blue-hover font-medium text-sm transition-colors">← 職員管理へ戻る</a>
+      <a href="/staff/users" class="text-apple-blue hover:text-apple-blue-hover font-medium text-sm transition-colors">← 利用者一覧へ戻る</a>
     </div>
 
     {message && (
@@ -83,41 +94,68 @@ if (Astro.request.method === 'POST') {
         </div>
       </div>
 
-      {/* 目標設定フォーム */}
-      <div class="md:col-span-2 bg-white p-8 rounded-2xl shadow-[0_2px_12px_rgba(0,0,0,0.06)] border border-apple-border-soft">
+      <div class="md:col-span-2 space-y-6">
+        {/* 目標設定フォーム */}
+        <div class="bg-white p-8 rounded-2xl shadow-[0_2px_12px_rgba(0,0,0,0.06)] border border-apple-border-soft">
+          <form method="POST" class="space-y-6">
+            <input type="hidden" name="action" value="updateGoals" />
+            <div>
+              <label for="longTermGoal" class="block text-sm font-semibold text-apple-secondary mb-2">長期目標（1つ）</label>
+              <input 
+                type="text" 
+                id="longTermGoal" 
+                name="longTermGoal" 
+                value={user.longTermGoal || ''}
+                placeholder="例：一人で梱包作業が最後までできるようになる"
+                class="w-full p-3 bg-apple-gray border border-apple-border-soft rounded-lg focus:border-apple-border-strong focus:bg-white focus:outline-none transition-colors text-apple-ink font-medium"
+              >
+            </div>
 
-      <form method="POST" class="space-y-6">
-        <div>
-          <label for="longTermGoal" class="block text-sm font-semibold text-apple-secondary mb-2">長期目標（1つ）</label>
-          <input 
-            type="text" 
-            id="longTermGoal" 
-            name="longTermGoal" 
-            value={user.longTermGoal || ''}
-            placeholder="例：一人で梱包作業が最後までできるようになる"
-            class="w-full p-3 bg-apple-gray border border-apple-border-soft rounded-lg focus:border-apple-border-strong focus:bg-white focus:outline-none transition-colors text-apple-ink font-medium"
-          >
+            <div>
+              <label for="shortTermGoals" class="block text-sm font-semibold text-apple-secondary mb-2">短期目標（3〜6つ程度 / 改行して入力してください）</label>
+              <textarea 
+                id="shortTermGoals" 
+                name="shortTermGoals" 
+                rows="6"
+                placeholder="例：&#13;&#10;挨拶を大きな声でする&#13;&#10;わからないことはすぐ職員に聞く&#13;&#10;1時間に1回は休憩のサインを出す"
+                class="w-full p-3 bg-apple-gray border border-apple-border-soft rounded-lg focus:border-apple-border-strong focus:bg-white focus:outline-none transition-colors text-apple-ink font-medium resize-none"
+              >{user.shortTermGoals || ''}</textarea>
+            </div>
+
+            <button 
+              type="submit" 
+              class="w-full mt-4 bg-apple-ink text-white font-semibold py-3.5 rounded-xl hover:bg-black transition-transform active:scale-[0.98] Save Goals Button (保存)"
+            >
+              目標を保存する
+            </button>
+          </form>
         </div>
 
-        <div>
-          <label for="shortTermGoals" class="block text-sm font-semibold text-apple-secondary mb-2">短期目標（3〜6つ程度 / 改行して入力してください）</label>
-          <textarea 
-            id="shortTermGoals" 
-            name="shortTermGoals" 
-            rows="6"
-            placeholder="例：&#13;&#10;挨拶を大きな声でする&#13;&#10;わからないことはすぐ職員に聞く&#13;&#10;1時間に1回は休憩のサインを出す"
-            class="w-full p-3 bg-apple-gray border border-apple-border-soft rounded-lg focus:border-apple-border-strong focus:bg-white focus:outline-none transition-colors text-apple-ink font-medium resize-none"
-          >{user.shortTermGoals || ''}</textarea>
-          <p class="text-xs text-apple-secondary mt-2">※将来的にエクセルなどをインポートして自動設定する機能を追加予定です。</p>
-        </div>
+        {/* ユーザー管理機能 */}
+        <div class="bg-white p-8 rounded-2xl shadow-[0_2px_12px_rgba(0,0,0,0.06)] border border-apple-border-soft">
+          <h3 class="font-semibold text-apple-ink mb-4">ユーザー情報の管理</h3>
+          
+          <form method="POST" class="flex gap-3 mb-6">
+            <input type="hidden" name="action" value="updateName" />
+            <input 
+              type="text" 
+              name="name" 
+              value={user.name} 
+              required
+              class="flex-1 p-3 bg-apple-gray border border-apple-border-soft rounded-lg focus:border-apple-border-strong focus:bg-white focus:outline-none transition-colors text-apple-ink text-sm"
+            >
+            <button type="submit" class="bg-apple-gray text-apple-ink border border-apple-border-soft px-4 py-2 rounded-lg text-sm font-semibold hover:bg-white transition-colors">名前を変更</button>
+          </form>
 
-        <button 
-          type="submit" 
-          class="w-full mt-4 bg-apple-ink text-white font-semibold py-3.5 rounded-xl hover:bg-black transition-transform active:scale-[0.98] Save Goals Button (保存)"
-        >
-          目標を保存する
-        </button>
-      </form>
+          <form method="POST" onsubmit="return confirm('本当にこの利用者を削除しますか？この操作は元に戻せません。');" class="pt-6 border-t border-apple-border-soft">
+            <input type="hidden" name="action" value="deleteUser" />
+            <button type="submit" class="text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 px-4 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>
+              この利用者を削除する
+            </button>
+            <p class="text-xs text-apple-secondary mt-2">※削除すると利用者一覧から消え、ログインできなくなります。</p>
+          </form>
+        </div>
       </div>
     </div>
 

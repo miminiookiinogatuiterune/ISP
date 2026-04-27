@@ -80,8 +80,8 @@ if (Astro.request.method === 'POST') {
                   {report.comment || <span class="text-apple-border-soft">-</span>}
                 </td>
                 <td class="p-4">
-                  <a href={`/staff/users/${report.userId}`} class="inline-block bg-white text-apple-blue border border-apple-border-soft px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-apple-gray transition-colors Edit Goal Button (目標編集)">
-                    目標設定
+                  <a href={`/staff/reports/${report.id}`} class="inline-block bg-white text-apple-blue border border-apple-border-soft px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-apple-gray transition-colors">
+                    {report.staffNote ? '💬 コメント編集' : 'コメント追記'}
                   </a>
                 </td>
               </tr>

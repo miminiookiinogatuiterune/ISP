@@ -1,23 +1,59 @@
 ---
 import Layout from '../../layouts/Layout.astro';
 import StaffNav from '../../components/StaffNav.astro';
-import { db, DailyReport, User, eq } from 'astro:db';
+import { db, DailyReport, User } from 'astro:db';
+
+// 表示方法の取得 (date または user)
+const groupBy = Astro.url.searchParams.get('groupBy') || 'date';
 
 // データの取得
 const reportsRaw = await db.select().from(DailyReport);
 const users = await db.select().from(User);
 
-// 簡易的なJoin
+// 簡易的なJoinと日付の補完
 const reports = reportsRaw.map(report => {
   const user = users.find(u => u.id === report.userId);
+  
+  // 過去のデータで targetDate が無い場合は createdAt から生成
+  let dateVal = report.targetDate;
+  if (!dateVal) {
+    const d = new Date(report.createdAt);
+    dateVal = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }
+
   return {
     ...report,
-    userName: user ? user.name : '不明なユーザー'
+    userName: user ? user.name : '不明なユーザー',
+    displayDate: dateVal,
   };
-}).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+});
 
-if (Astro.request.method === 'POST') {
-  // ...
+// グループ化とソート
+let groupedReports = [];
+
+if (groupBy === 'user') {
+  // 人別にグループ化
+  const usersMap = new Map();
+  reports.forEach(r => {
+    if (!usersMap.has(r.userId)) usersMap.set(r.userId, { userName: r.userName, items: [] });
+    usersMap.get(r.userId).items.push(r);
+  });
+  
+  groupedReports = Array.from(usersMap.values()).sort((a, b) => a.userName.localeCompare(b.userName, 'ja'));
+  
+  // 各ユーザー内の日報を日付降順でソート
+  groupedReports.forEach(group => {
+    group.items.sort((a, b) => b.displayDate.localeCompare(a.displayDate));
+  });
+} else {
+  // 日付別にグループ化
+  const datesMap = new Map();
+  reports.forEach(r => {
+    if (!datesMap.has(r.displayDate)) datesMap.set(r.displayDate, { date: r.displayDate, items: [] });
+    datesMap.get(r.displayDate).items.push(r);
+  });
+  
+  groupedReports = Array.from(datesMap.values()).sort((a, b) => b.date.localeCompare(a.date));
 }
 ---
 
@@ -29,74 +65,89 @@ if (Astro.request.method === 'POST') {
       <StaffNav current="daily" />
     </div>
 
-    <div class="flex justify-between items-end mb-2 px-2">
+    <div class="flex flex-col md:flex-row md:justify-between md:items-end gap-4 mb-2 px-2">
       <div>
         <h3 class="text-xl font-semibold text-apple-ink tracking-tight mb-1">利用者日報一覧</h3>
-        <p class="text-sm text-apple-secondary">直近に入力された日報（App A のデータ）</p>
+        <p class="text-sm text-apple-secondary">日報の確認とフィードバック</p>
       </div>
-      <a href="/api/export-reports" target="_blank" class="bg-apple-gray text-apple-ink border border-apple-border-soft px-4 py-2 rounded-xl text-sm font-semibold hover:bg-white transition-colors flex items-center gap-2">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-        CSVエクスポート
-      </a>
+      
+      <div class="flex items-center gap-4">
+        {/* グループ化切り替えタブ */}
+        <div class="flex bg-apple-gray p-1 rounded-xl border border-apple-border-soft">
+          <a href="?groupBy=date" class={`px-4 py-1.5 text-sm font-semibold rounded-lg transition-colors ${groupBy === 'date' ? 'bg-white text-apple-ink shadow-sm' : 'text-apple-secondary hover:text-apple-ink'}`}>日付別</a>
+          <a href="?groupBy=user" class={`px-4 py-1.5 text-sm font-semibold rounded-lg transition-colors ${groupBy === 'user' ? 'bg-white text-apple-ink shadow-sm' : 'text-apple-secondary hover:text-apple-ink'}`}>人別</a>
+        </div>
+
+        <a href="/api/export-reports" target="_blank" class="bg-apple-gray text-apple-ink border border-apple-border-soft px-4 py-2 rounded-xl text-sm font-semibold hover:bg-white transition-colors flex items-center gap-2">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+          CSV出力
+        </a>
+      </div>
     </div>
 
     <div class="bg-white rounded-[24px] shadow-[0_4px_24px_rgba(0,0,0,0.04)] border border-apple-border-soft overflow-hidden">
-      <div class="overflow-x-auto">
-        <table class="w-full text-left border-collapse text-sm">
-          <thead>
-            <tr class="border-b border-apple-border-soft bg-apple-gray/50 text-apple-secondary">
-              <th class="p-4 font-semibold whitespace-nowrap">日付</th>
-              <th class="p-4 font-semibold whitespace-nowrap">氏名 / ID</th>
-              <th class="p-4 font-semibold whitespace-nowrap">作業</th>
-              <th class="p-4 font-semibold whitespace-nowrap text-center">体調</th>
-              <th class="p-4 font-semibold w-1/4">コメント</th>
-              <th class="p-4 font-semibold w-1/4">アクション</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-apple-border-soft">
-            {reports.map((report) => (
-              <tr class="hover:bg-gray-50/50 transition-colors">
-                <td class="p-4 text-apple-secondary whitespace-nowrap">
-                  {new Date(report.createdAt).toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric', weekday: 'short' })}
-                </td>
-                <td class="p-4">
-                  <div class="font-semibold text-apple-ink">{report.userName}</div>
-                  <div class="text-xs text-apple-secondary mt-0.5">{report.userId}</div>
-                </td>
-                <td class="p-4">
-                  <div class="inline-flex flex-col gap-1">
-                    <span class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-apple-gray text-apple-ink border border-apple-border-soft w-fit">
-                      {report.taskType}
-                    </span>
-                    <span class="text-xs font-semibold text-apple-secondary ml-1">
-                      {report.startTime} - {report.endTime}
-                    </span>
-                  </div>
-                </td>
-                <td class="p-4 text-center text-xl">
-                  {report.healthStatus === 3 ? '😄' : report.healthStatus === 2 ? '😐' : '😷'}
-                </td>
-                <td class="p-4 text-apple-ink break-words text-xs">
-                  {report.comment || <span class="text-apple-border-soft">-</span>}
-                </td>
-                <td class="p-4">
-                  <a href={`/staff/reports/${report.id}`} class="inline-block bg-white text-apple-blue border border-apple-border-soft px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-apple-gray transition-colors">
-                    {report.staffNote ? '💬 コメント編集' : 'コメント追記'}
-                  </a>
-                </td>
-              </tr>
-            ))}
-
-            {reports.length === 0 && (
-              <tr>
-                <td colspan="6" class="p-12 text-center text-apple-secondary">
-                  日報データがありません。
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+      
+      {reports.length === 0 ? (
+        <div class="p-12 text-center text-apple-secondary">日報データがありません。</div>
+      ) : (
+        <div>
+          {groupedReports.map((group) => (
+            <div class="mb-2">
+              <div class="bg-apple-gray/50 px-6 py-3 border-y border-apple-border-soft text-apple-ink font-semibold text-sm">
+                {groupBy === 'date' ? group.date : `${group.userName} さん`}
+              </div>
+              
+              <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse text-sm">
+                  <tbody class="divide-y divide-apple-border-soft">
+                    {group.items.map((report) => (
+                      <tr class="hover:bg-gray-50/50 transition-colors">
+                        <td class="p-4 w-32 whitespace-nowrap">
+                          {groupBy === 'user' ? (
+                            <span class="text-apple-secondary font-medium">{report.displayDate}</span>
+                          ) : (
+                            <div>
+                              <div class="font-semibold text-apple-ink">{report.userName}</div>
+                              <div class="text-xs text-apple-secondary mt-0.5">{report.userId}</div>
+                            </div>
+                          )}
+                        </td>
+                        <td class="p-4">
+                          <div class="inline-flex flex-col gap-1">
+                            <span class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-apple-gray text-apple-ink border border-apple-border-soft w-fit">
+                              {report.taskType}
+                            </span>
+                            <span class="text-xs font-semibold text-apple-secondary ml-1">
+                              {report.startTime} - {report.endTime}
+                            </span>
+                          </div>
+                        </td>
+                        <td class="p-4 text-center text-xl w-16">
+                          {report.healthStatus === 3 ? '😄' : report.healthStatus === 2 ? '😐' : '😷'}
+                        </td>
+                        <td class="p-4 text-apple-ink break-words text-xs w-1/3">
+                          {report.comment || <span class="text-apple-border-soft">-</span>}
+                        </td>
+                        <td class="p-4 w-48">
+                          <a href={`/staff/reports/${report.id}`} class={`block w-full text-center border px-3 py-2 rounded-lg text-xs font-semibold transition-colors ${report.staffNote ? 'bg-apple-gray text-apple-ink border-apple-border-strong hover:bg-gray-200' : 'bg-white text-apple-blue border-apple-border-soft hover:bg-apple-gray'}`}>
+                            {report.staffNote ? '💬 コメント編集' : 'コメント追記'}
+                          </a>
+                          {report.staffNote && (
+                            <p class="text-[10px] text-apple-secondary mt-2 truncate max-w-[150px]">
+                              {report.staffNote}
+                            </p>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      
     </div>
   </div>
 </Layout>

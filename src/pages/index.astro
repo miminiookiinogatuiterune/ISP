@@ -15,6 +15,8 @@ const todayStr = today.toLocaleDateString('ja-JP', { year: 'numeric', month: 'lo
 const lastMonthDate = new Date(today.getFullYear(), today.getMonth() - 1, 1);
 const lastMonthStr = `${lastMonthDate.getFullYear()}-${String(lastMonthDate.getMonth() + 1).padStart(2, '0')}`;
 
+const todayStrYYYYMMDD = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
 // URLにuserIdがあれば名前を取得し、先月の振り返りが終わっているかチェック
 if (defaultUserId) {
   const users = await db.select().from(User).where(eq(User.id, defaultUserId));
@@ -37,6 +39,7 @@ if (Astro.request.method === 'POST') {
   try {
     const data = await Astro.request.formData();
     const userId = data.get('userId');
+    const targetDate = data.get('targetDate') || todayStrYYYYMMDD; // 'YYYY-MM-DD'
     let taskType = data.get('taskType');
     const taskOtherDetail = data.get('taskOtherDetail');
     const startTime = data.get('startTime');
@@ -49,16 +52,27 @@ if (Astro.request.method === 'POST') {
       taskType = `その他：${taskOtherDetail.slice(0, 20)}`;
     }
 
-    if (typeof userId === 'string' && typeof taskType === 'string' && typeof startTime === 'string' && typeof endTime === 'string') {
-      await db.insert(DailyReport).values({
-        userId,
-        taskType,
-        startTime,
-        endTime,
-        healthStatus,
-        comment: typeof comment === 'string' ? comment.slice(0, 20) : '',
-      });
-      message = "日報を送信しました。お疲れ様でした！";
+    if (typeof userId === 'string' && typeof targetDate === 'string' && typeof taskType === 'string' && typeof startTime === 'string' && typeof endTime === 'string') {
+      
+      // 同一日付の重複チェック
+      const existingReports = await db.select().from(DailyReport).where(eq(DailyReport.userId, userId));
+      // where句で直接複数条件が使えない場合があるためJSでフィルタリング
+      const hasDuplicate = existingReports.some(r => r.targetDate === targetDate);
+      
+      if (hasDuplicate) {
+        message = "エラー：選択された日付の日報はすでに入力されています。";
+      } else {
+        await db.insert(DailyReport).values({
+          userId,
+          targetDate,
+          taskType,
+          startTime,
+          endTime,
+          healthStatus,
+          comment: typeof comment === 'string' ? comment.slice(0, 20) : '',
+        });
+        message = "日報を送信しました。お疲れ様でした！";
+      }
     }
   } catch (error) {
     message = "エラーが発生しました。";
@@ -82,7 +96,7 @@ for (let h = 9; h <= 18; h++) {
   <div class="max-w-xl mx-auto bg-white p-8 md:p-12 rounded-[24px] shadow-[0_4px_24px_rgba(0,0,0,0.04)] border border-apple-border-soft">
     <div class="text-center mb-10">
       <div class="text-sm font-semibold text-apple-secondary mb-2">{todayStr}</div>
-      <h2 class="text-3xl font-semibold text-apple-ink tracking-tight mb-2">今日の日報</h2>
+      <h2 class="text-3xl font-semibold text-apple-ink tracking-tight mb-2">日報入力</h2>
       {userName ? (
         <p class="text-apple-secondary text-lg">ようこそ、<span class="font-semibold text-apple-ink">{userName}</span> さん</p>
       ) : (
@@ -94,7 +108,7 @@ for (let h = 9; h <= 18; h++) {
     </div>
     
     {message && (
-      <div class="mb-8 p-4 bg-gray-50 text-apple-ink font-medium rounded-xl border border-apple-border-soft text-center">
+      <div class={`mb-8 p-4 font-medium rounded-xl border text-center ${message.includes('エラー') ? 'bg-red-50 text-red-700 border-red-200' : 'bg-gray-50 text-apple-ink border-apple-border-soft'}`}>
         {message}
       </div>
     )}
@@ -102,6 +116,21 @@ for (let h = 9; h <= 18; h++) {
     {!message && userName && (
       <form method="POST" class="space-y-10" id="dailyReportForm">
         <input type="hidden" name="userId" value={defaultUserId} />
+
+        {/* 1. 日付選択 */}
+        <div>
+          <label for="targetDate" class="block text-sm font-semibold text-apple-secondary mb-3">1. 作業した日付はいつですか？</label>
+          <input 
+            type="date" 
+            id="targetDate" 
+            name="targetDate" 
+            required
+            value={todayStrYYYYMMDD}
+            max={todayStrYYYYMMDD}
+            class="w-full p-4 bg-apple-gray border border-apple-border-soft rounded-xl focus:border-apple-border-strong focus:bg-white focus:outline-none transition-colors text-apple-ink font-medium text-lg cursor-pointer"
+          >
+          <p class="text-xs text-apple-secondary mt-2">※過去の日付にさかのぼって入力することも可能です。</p>
+        </div>
 
         {/* 2. 作業内容 */}
         <div>

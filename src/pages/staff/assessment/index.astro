@@ -4,42 +4,27 @@ import StaffNav from '../../../components/StaffNav.astro';
 import { db, User, Assessment, eq } from 'astro:db';
 
 let message = "";
+const isDemo = Astro.url.searchParams.get('demo') === 'true';
 
 const users = await db.select().from(User);
 const selectedUserId = Astro.url.searchParams.get('userId') || users[0]?.id;
 const selectedUser = users.find(u => u.id === selectedUserId);
 
+// デモ用のデータ
+const demoSummary = {
+  totalDays: 124,
+  goodHealth: 98,
+  badHealth: 4,
+  notesSummary: "集中力が途切れるとミスが増える傾向にある。声かけによる休憩誘導が効果的だった。"
+};
+const demoDisabilityStatus = "【AI草案】\n・これまでの記録から、体調の波は安定している（元気：98日/124日中）。\n・ただし、長時間の単純作業（梱包作業など）において集中力が低下しやすい傾向がみられる。\n・「わからないことはすぐ聞く」という短期目標については、職員からの声かけがあればスムーズに質問できるが、自発的な発信にはまだ支援が必要。";
+const demoWorkConsiderations = "【AI草案】\n・1時間に1回、定期的な小休憩を挟むことで作業精度が維持される。\n・新しい作業を依頼する際は、口頭だけでなく視覚的な手順書（写真付き）を用意すると理解がスムーズ。\n・質問しやすいよう、常に周囲に職員を配置するか「質問カード」のようなツールを導入することを検討する。";
+
+// ... existing code ...
+
 // 保存処理
 if (Astro.request.method === 'POST') {
-  try {
-    const data = await Astro.request.formData();
-    const userId = data.get('userId');
-    const disabilityStatus = data.get('disabilityStatus') as string;
-    const workConsiderations = data.get('workConsiderations') as string;
-    const action = data.get('action') as string; // 'draft' or 'approved'
-
-    if (typeof userId === 'string') {
-      const existing = await db.select().from(Assessment).where(eq(Assessment.userId, userId));
-      
-      if (existing.length > 0) {
-        await db.update(Assessment)
-          .set({ disabilityStatus, workConsiderations, status: action })
-          .where(eq(Assessment.userId, userId));
-      } else {
-        await db.insert(Assessment).values({
-          userId,
-          disabilityStatus,
-          workConsiderations,
-          status: action
-        });
-      }
-      
-      message = action === 'approved' ? "✅ 本案として承認・保存しました" : "✅ 下書き保存しました";
-    }
-  } catch (error) {
-    console.error(error);
-    message = "エラーが発生しました";
-  }
+// ... same ...
 }
 
 // 現在のアセスメントデータを取得
@@ -50,54 +35,15 @@ if (selectedUser) {
     currentAssessment = assessments[0];
   }
 }
+
+// デモモードの場合は値を上書き
+const displayDisabilityStatus = isDemo ? demoDisabilityStatus : (currentAssessment?.disabilityStatus || '');
+const displayWorkConsiderations = isDemo ? demoWorkConsiderations : (currentAssessment?.workConsiderations || '');
+
 ---
 <Layout title="アセスメント | セルフプランニング支援アプリ">
   <div class="space-y-6 max-w-5xl mx-auto">
-    <div class="mb-8">
-      <h2 class="text-3xl font-semibold text-apple-ink tracking-tight mb-2">職員管理画面</h2>
-      <StaffNav current="assessment" />
-    </div>
-
-    <div class="flex justify-between items-end mb-4 px-2">
-      <div>
-        <h3 class="text-xl font-semibold text-apple-ink tracking-tight mb-1">アセスメント・本案作成 (App C)</h3>
-        <p class="text-sm text-apple-secondary">利用者の自己評価を元に、職員が専門的な調整を行う画面です。</p>
-      </div>
-    </div>
-
-    {message && (
-      <div class="p-4 bg-green-50 text-green-700 font-bold rounded-xl border border-green-200 text-center shadow-sm animate-fade-in mb-6">
-        {message}
-      </div>
-    )}
-
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
-      {/* サイドバー: 利用者選択 */}
-      <div class="md:col-span-1 space-y-2">
-        <div class="text-xs font-semibold text-apple-secondary mb-3 px-2">対象者を選択</div>
-        {users.map(user => (
-          <a href={`?userId=${user.id}`} class={`block p-3 rounded-xl border transition-colors ${selectedUserId === user.id ? 'bg-white border-apple-border-strong shadow-sm' : 'bg-apple-gray border-transparent hover:bg-white hover:border-apple-border-soft'}`}>
-            <div class={`font-semibold ${selectedUserId === user.id ? 'text-apple-ink' : 'text-apple-secondary'}`}>{user.name}</div>
-          </a>
-        ))}
-      </div>
-
-      {/* メイン: アセスメントフォーム */}
-      <div class="md:col-span-3">
-        {selectedUser ? (
-          <form method="POST" class="bg-white p-8 rounded-[24px] shadow-[0_4px_24px_rgba(0,0,0,0.04)] border border-apple-border-soft space-y-8 animate-fade-in">
-            <input type="hidden" name="userId" value={selectedUser.id} />
-            
-            <div class="flex items-center justify-between border-b border-apple-border-soft pb-4">
-              <h4 class="text-2xl font-semibold text-apple-ink">{selectedUser.name} さんのアセスメント（原案）</h4>
-              {currentAssessment?.status === 'approved' ? (
-                <span class="px-3 py-1 bg-green-100 text-green-800 text-xs font-bold rounded-full">承認済み</span>
-              ) : (
-                <span class="px-3 py-1 bg-yellow-100 text-yellow-800 text-xs font-bold rounded-full">下書き（未承認）</span>
-              )}
-            </div>
-
-            <div class="space-y-8">
+// ...
               {/* 利用者の自己評価パネル */}
               <div class="p-6 bg-apple-gray rounded-2xl border border-apple-border-soft">
                 <h5 class="font-semibold text-apple-ink mb-4 flex items-center gap-2">
@@ -117,6 +63,28 @@ if (selectedUser) {
                 </div>
               </div>
 
+              {isDemo && (
+                <div class="p-6 bg-blue-50 rounded-2xl border border-blue-200 animate-fade-in">
+                  <h5 class="font-semibold text-blue-900 mb-3 flex items-center gap-2">
+                    ✨ 過去半年間のデータ分析サマリー
+                  </h5>
+                  <div class="grid grid-cols-2 gap-4 text-sm mb-4">
+                    <div class="bg-white p-3 rounded-xl border border-blue-100">
+                      <div class="text-xs text-blue-600 mb-1">出勤状況</div>
+                      <div class="font-bold text-blue-900">{demoSummary.totalDays} 日</div>
+                    </div>
+                    <div class="bg-white p-3 rounded-xl border border-blue-100">
+                      <div class="text-xs text-blue-600 mb-1">体調安定度</div>
+                      <div class="font-bold text-blue-900">良好 {demoSummary.goodHealth}日 / 不調 {demoSummary.badHealth}日</div>
+                    </div>
+                  </div>
+                  <div class="bg-white p-3 rounded-xl border border-blue-100 text-sm text-blue-900">
+                    <div class="text-xs text-blue-600 mb-1">職員特記事項（AI要約）</div>
+                    {demoSummary.notesSummary}
+                  </div>
+                </div>
+              )}
+
               {/* 職員の入力パネル */}
               <div>
                 <h5 class="font-semibold text-apple-ink mb-2">職員のモニタリング・アセスメント追記</h5>
@@ -125,18 +93,23 @@ if (selectedUser) {
                 <div class="space-y-5">
                   <div>
                     <label class="block text-sm font-semibold text-apple-secondary mb-2">障害状況・特性</label>
-                    <textarea name="disabilityStatus" class="w-full p-4 bg-apple-gray border border-apple-border-soft rounded-xl focus:bg-white focus:border-apple-border-strong focus:outline-none transition-colors text-sm text-apple-ink" rows="3" placeholder="支援者の視点から見た特性を入力してください...">{currentAssessment?.disabilityStatus || ''}</textarea>
+                    <textarea name="disabilityStatus" class="w-full p-4 bg-apple-gray border border-apple-border-soft rounded-xl focus:bg-white focus:border-apple-border-strong focus:outline-none transition-colors text-sm text-apple-ink" rows="5" placeholder="支援者の視点から見た特性を入力してください...">{displayDisabilityStatus}</textarea>
                   </div>
                   <div>
                     <label class="block text-sm font-semibold text-apple-secondary mb-2">就労面での配慮事項</label>
-                    <textarea name="workConsiderations" class="w-full p-4 bg-apple-gray border border-apple-border-soft rounded-xl focus:bg-white focus:border-apple-border-strong focus:outline-none transition-colors text-sm text-apple-ink" rows="3" placeholder="職場環境における配慮等を入力してください...">{currentAssessment?.workConsiderations || ''}</textarea>
+                    <textarea name="workConsiderations" class="w-full p-4 bg-apple-gray border border-apple-border-soft rounded-xl focus:bg-white focus:border-apple-border-strong focus:outline-none transition-colors text-sm text-apple-ink" rows="5" placeholder="職場環境における配慮等を入力してください...">{displayWorkConsiderations}</textarea>
                   </div>
                 </div>
               </div>
 
-              <div class="pt-6 border-t border-apple-border-soft flex justify-end gap-3">
-                <button type="submit" name="action" value="draft" class="px-6 py-3 bg-apple-gray text-apple-ink font-semibold rounded-xl hover:bg-gray-200 transition-colors text-sm">下書き保存</button>
-                <button type="submit" name="action" value="approved" class="px-6 py-3 bg-apple-blue text-white font-semibold rounded-xl shadow-[0_4px_14px_rgba(0,113,227,0.3)] hover:bg-apple-blue-hover transition-all active:scale-95 text-sm">本案として承認する</button>
+              <div class="pt-6 border-t border-apple-border-soft flex justify-between items-center">
+                <a href={`?userId=${selectedUser.id}&demo=true`} class="text-xs font-semibold text-apple-blue hover:text-apple-blue-hover transition-colors flex items-center gap-1">
+                  ✨ 過去半年間の記録から草案を生成する (Demo)
+                </a>
+                <div class="flex gap-3">
+                  <button type="submit" name="action" value="draft" class="px-6 py-3 bg-apple-gray text-apple-ink font-semibold rounded-xl hover:bg-gray-200 transition-colors text-sm">下書き保存</button>
+                  <button type="submit" name="action" value="approved" class="px-6 py-3 bg-apple-blue text-white font-semibold rounded-xl shadow-[0_4px_14px_rgba(0,113,227,0.3)] hover:bg-apple-blue-hover transition-all active:scale-95 text-sm">本案として承認する</button>
+                </div>
               </div>
             </div>
           </form>

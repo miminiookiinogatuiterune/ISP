@@ -14,6 +14,7 @@ const DailyReport = defineTable({
   columns: {
     id: column.number({ primaryKey: true }),
     userId: column.text(),
+    targetDate: column.text({ optional: true }), // 'YYYY-MM-DD'形式で実際に作業した日付を保存
     taskType: column.text(), // 'その他：〇〇' を許容
     startTime: column.text(), // '09:00'
     endTime: column.text(),   // '15:00'

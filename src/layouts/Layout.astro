@@ -9,6 +9,8 @@ interface Props {
 }
 
 const { title = "セルフプランニング支援アプリ" } = Astro.props;
+const userId = Astro.url.searchParams.get('userId');
+const userQuery = userId ? `?userId=${userId}` : '';
 ---
 <!doctype html>
 <html lang="ja">
@@ -23,10 +25,10 @@ const { title = "セルフプランニング支援アプリ" } = Astro.props;
 	<body class="bg-apple-gray text-apple-ink font-sans min-h-screen flex flex-col antialiased">
 		<header class="bg-black/80 backdrop-blur-md text-white p-3 sticky top-0 z-50">
 			<div class="container mx-auto flex justify-between items-center max-w-4xl text-sm">
-				<a href="/" class="font-semibold text-white/90 hover:text-white transition-colors"> アプリ</a>
+				<a href={`/${userQuery}`} class="font-semibold text-white/90 hover:text-white transition-colors"> アプリ</a>
 				<nav class="space-x-6">
-					<a href="/" class="text-white/80 hover:text-white transition-colors">日報入力</a>
-					<a href="/reflection" class="text-white/80 hover:text-white transition-colors">振り返り</a>
+					<a href={`/${userQuery}`} class="text-white/80 hover:text-white transition-colors">日報入力</a>
+					<a href={`/reflection${userQuery}`} class="text-white/80 hover:text-white transition-colors">振り返り</a>
 					<a href="/staff" class="text-white/80 hover:text-white transition-colors">職員管理</a>
 				</nav>
 			</div>
